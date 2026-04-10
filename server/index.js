@@ -50,15 +50,39 @@ app.get("/api/youtube/search", async (req, res) => {
 
 // ─── Todo CRUD ───────────────────────────────────────────────
 
-// 전체 조회
+// 오른쪽 패널용: 미완료 + 오늘 완료된 투두
 app.get("/api/todos", async (req, res) => {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
   const { data, error } = await supabase
     .from("todos")
     .select("*")
+    .or(`completed_at.is.null,completed_at.gte.${todayStart.toISOString()}`)
     .order("created_at", { ascending: true });
 
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
+});
+
+// 왼쪽 히스토리용: 전체 투두를 날짜별로 그룹핑
+app.get("/api/todos/history", async (req, res) => {
+  const { data, error } = await supabase
+    .from("todos")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  // created_at 날짜(YYYY-MM-DD)로 그룹핑
+  const grouped = {};
+  data.forEach((todo) => {
+    const date = todo.created_at.split("T")[0];
+    if (!grouped[date]) grouped[date] = [];
+    grouped[date].push(todo);
+  });
+
+  res.json(grouped);
 });
 
 // 생성
@@ -76,14 +100,19 @@ app.post("/api/todos", async (req, res) => {
   res.status(201).json(data);
 });
 
-// 완료 토글
+// 완료 토글 (completed_at 기반)
 app.patch("/api/todos/:id", async (req, res) => {
   const { id } = req.params;
-  const { is_done } = req.body;
+  const { completed } = req.body;
+
+  const updates = {
+    is_done: completed,
+    completed_at: completed ? new Date().toISOString() : null,
+  };
 
   const { data, error } = await supabase
     .from("todos")
-    .update({ is_done })
+    .update(updates)
     .eq("id", id)
     .select()
     .single();
