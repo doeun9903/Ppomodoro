@@ -23,6 +23,7 @@ export default function App() {
 
   const [selectedTodo, setSelectedTodo] = useState<SelectedTodo | null>(null);
   const [sessionSeconds, setSessionSeconds] = useState(0);
+  const [syncedTodo, setSyncedTodo] = useState<{ id: string; focused_seconds: number } | null>(null);
   const accRef = useRef(0); // 동기화용 누적 초 (렌더링 불필요)
   const prevRef = useRef({
     isRunning: false,
@@ -59,7 +60,10 @@ export default function App() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ seconds: secs }),
-      }).catch(console.error);
+      })
+        .then((res) => res.json())
+        .then((updated) => setSyncedTodo({ id: updated.id, focused_seconds: updated.focused_seconds }))
+        .catch(console.error);
     }
 
     prevRef.current = {
@@ -81,6 +85,7 @@ export default function App() {
         selectedTodoId={selectedTodo?.id ?? null}
         onSelect={setSelectedTodo}
         sessionSeconds={sessionSeconds}
+        syncedTodo={syncedTodo}
       />
       <div className="relative z-10 flex flex-col items-center gap-5 mt-20 p-8 w-[90%] max-w-[480px] text-center bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] before:absolute before:-top-[50px] before:-right-[50px] before:w-[150px] before:h-[150px] before:bg-[#ff6b6b] before:blur-[80px] before:opacity-30 before:-z-10 after:absolute after:-bottom-[50px] after:-left-[50px] after:w-[150px] after:h-[150px] after:bg-[#4ecdc4] after:blur-[80px] after:opacity-30 after:-z-10">
         <ProgressCircle progress={timer.progress} mode={timer.mode} />

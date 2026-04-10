@@ -18,6 +18,7 @@ interface Props {
   selectedTodoId: string | null;
   onSelect: (todo: SelectedTodo | null) => void;
   sessionSeconds: number;
+  syncedTodo: { id: string; focused_seconds: number } | null;
 }
 
 const API = "http://localhost:3001/api/todos";
@@ -31,7 +32,7 @@ const formatFocusTime = (seconds: number) => {
   return `${seconds}초`;
 };
 
-export default function TodoPanel({ selectedTodoId, onSelect, sessionSeconds }: Props) {
+export default function TodoPanel({ selectedTodoId, onSelect, sessionSeconds, syncedTodo }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [input, setInput] = useState("");
@@ -45,12 +46,15 @@ export default function TodoPanel({ selectedTodoId, onSelect, sessionSeconds }: 
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [isOpen]);
 
-  // 동기화 후 로컬 시간 반영 (패널 열려있을 때)
+  // 동기화 완료 시 → 해당 투두의 focused_seconds만 로컬에서 업데이트
   useEffect(() => {
-    if (!isOpen || !selectedTodoId || sessionSeconds !== 0) return;
-    // sessionSeconds가 0으로 리셋됐다 = 동기화 완료 → 목록 새로고침
-    fetchTodos();
-  }, [sessionSeconds, isOpen, selectedTodoId]);
+    if (!syncedTodo) return;
+    setTodos((prev) =>
+      prev.map((t) =>
+        t.id === syncedTodo.id ? { ...t, focused_seconds: syncedTodo.focused_seconds } : t
+      )
+    );
+  }, [syncedTodo]);
 
   const fetchTodos = async () => {
     setIsLoading(true);
