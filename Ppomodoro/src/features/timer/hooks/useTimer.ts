@@ -3,15 +3,33 @@ import type { Mode } from "../types";
 // 타이머 기능 구현하는 메인 코드
 //useEffect -> 타이머 루프
 
-// 상수 정의 (테스트를 위해 임시로 5초, 3초로 변경)
-const FOCUS_TIME = 25 * 60;
-const BREAK_TIME = 10 * 60;
+const FOCUS_DEFAULT = 25; // minutes
+const BREAK_DEFAULT = 10; // minutes
+
+const STORAGE_FOCUS_MINS = "timer-focus-mins";
+const STORAGE_BREAK_MINS = "timer-break-mins";
 
 export function useTimer() {
+  // 커스텀 타이머 설정 (분 단위)
+  const [focusMins, setFocusMins] = useState<number>(() => {
+    const saved = localStorage.getItem(STORAGE_FOCUS_MINS);
+    return saved ? Number(saved) : FOCUS_DEFAULT;
+  });
+  const [breakMins, setBreakMins] = useState<number>(() => {
+    const saved = localStorage.getItem(STORAGE_BREAK_MINS);
+    return saved ? Number(saved) : BREAK_DEFAULT;
+  });
+
+  const focusTime = focusMins * 60;
+  const breakTime = breakMins * 60;
+
   // 현재의 상태가 집중 시간인지 휴식 시간인지
   const [mode, setMode] = useState<Mode>("focus");
   // 남은 시간
-  const [timeLeft, setTimeLeft] = useState(FOCUS_TIME);
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_FOCUS_MINS);
+    return (saved ? Number(saved) : FOCUS_DEFAULT) * 60;
+  });
   // 타이머의 작동 여부
   const [isRunning, setIsRunning] = useState(false);
 
@@ -29,7 +47,7 @@ export function useTimer() {
   }, [totalStudyTime]);
 
   // 모드에 따라 전체 시간 계산
-  const totalTime = mode === "focus" ? FOCUS_TIME : BREAK_TIME;
+  const totalTime = mode === "focus" ? focusTime : breakTime;
 
   // 수동 모드 전환 함수
   const switchMode = () => {
@@ -38,7 +56,7 @@ export function useTimer() {
     setIsRunning(false); // 전환 시 멈춤
     setMode(next);
     // 모드가 바뀌면 남은 시간도 바뀌어야 한다.
-    setTimeLeft(next === "focus" ? FOCUS_TIME : BREAK_TIME);
+    setTimeLeft(next === "focus" ? focusTime : breakTime);
   };
 
   //타이머 루프 (핵심)
@@ -70,9 +88,9 @@ export function useTimer() {
 
       const nextMode = mode === "focus" ? "break" : "focus";
       setMode(nextMode);
-      setTimeLeft(nextMode === "focus" ? FOCUS_TIME : BREAK_TIME);
+      setTimeLeft(nextMode === "focus" ? focusTime : breakTime);
     }
-  }, [timeLeft, isRunning, mode]);
+  }, [timeLeft, isRunning, mode, focusTime, breakTime]);
 
   //진행률 (모드에 상관없이 물이 차오르는 효과로 통일)
   const progress = (1 - timeLeft / totalTime) * 100;
@@ -89,11 +107,21 @@ export function useTimer() {
 
   const reset = () => {
     setIsRunning(false);
-    setTimeLeft(mode === "focus" ? FOCUS_TIME : BREAK_TIME);
+    setTimeLeft(mode === "focus" ? focusTime : breakTime);
   };
 
   const resetTotalStudyTime = () => {
     setTotalStudyTime(0);
+  };
+
+  // 타이머 설정 변경 (분 단위로 받아서 저장 + 타이머 리셋)
+  const updateTimerSettings = (newFocusMins: number, newBreakMins: number) => {
+    localStorage.setItem(STORAGE_FOCUS_MINS, String(newFocusMins));
+    localStorage.setItem(STORAGE_BREAK_MINS, String(newBreakMins));
+    setFocusMins(newFocusMins);
+    setBreakMins(newBreakMins);
+    setIsRunning(false);
+    setTimeLeft(mode === "focus" ? newFocusMins * 60 : newBreakMins * 60);
   };
 
   return {
@@ -102,10 +130,13 @@ export function useTimer() {
     isRunning,
     progress,
     totalStudyTime,
+    focusMins,
+    breakMins,
     start,
     pause,
     reset,
     switchMode,
     resetTotalStudyTime,
+    updateTimerSettings,
   };
 }

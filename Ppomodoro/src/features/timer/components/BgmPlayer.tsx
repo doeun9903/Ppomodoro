@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Play, Pause, Volume2, Search, X, Music, Star } from "lucide-react";
+import Tooltip from "../../../shared/components/Tooltip";
 
 interface Track {
   id: string;
@@ -293,16 +294,18 @@ const BgmPlayer = forwardRef<BgmPlayerHandle>(function BgmPlayer(_, ref) {
         )}
 
         {/* 재생/일시정지 */}
-        <button
-          onClick={togglePlay}
-          disabled={!isReady || !currentTrack}
-          className="text-white hover:text-white/80 hover:scale-110 active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center"
-        >
-          {isPlaying
-            ? <Pause size={20} fill="currentColor" />
-            : <Play size={20} fill="currentColor" className="ml-0.5" />
-          }
-        </button>
+        <Tooltip label={isPlaying ? "일시정지 [X]" : "재생 [X]"}>
+          <button
+            onClick={togglePlay}
+            disabled={!isReady || !currentTrack}
+            className="text-white hover:text-white/80 hover:scale-110 active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center"
+          >
+            {isPlaying
+              ? <Pause size={20} fill="currentColor" />
+              : <Play size={20} fill="currentColor" className="ml-0.5" />
+            }
+          </button>
+        </Tooltip>
 
         {/* 볼륨 */}
         <div className="flex items-center gap-2">
