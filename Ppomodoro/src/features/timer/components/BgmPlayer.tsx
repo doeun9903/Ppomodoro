@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Play, Pause, Volume2, Search, X, Music, Star } from "lucide-react";
 
 interface Track {
@@ -17,7 +17,11 @@ declare global {
 
 const FAVORITES_KEY = "bgm-favorites";
 
-export default function BgmPlayer() {
+export interface BgmPlayerHandle {
+  toggle: () => void;
+}
+
+const BgmPlayer = forwardRef<BgmPlayerHandle>(function BgmPlayer(_, ref) {
   const playerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const volumeRef = useRef<number>(50);
@@ -147,6 +151,8 @@ export default function BgmPlayer() {
       playerRef.current.playVideo();
     }
   };
+
+  useImperativeHandle(ref, () => ({ toggle: togglePlay }));
 
   const closePanel = () => {
     setShowPanel(false);
@@ -314,7 +320,9 @@ export default function BgmPlayer() {
       </div>
     </div>
   );
-}
+});
+
+export default BgmPlayer;
 
 // 트랙 아이템 (검색결과 / 즐겨찾기 공용)
 function TrackItem({

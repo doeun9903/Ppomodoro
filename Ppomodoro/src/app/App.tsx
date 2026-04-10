@@ -11,6 +11,7 @@ import {
   TodoPanel,
   useTimer,
 } from "../features/timer";
+import type { BgmPlayerHandle } from "../features/timer/components/BgmPlayer";
 
 interface SelectedTodo {
   id: string;
@@ -21,6 +22,8 @@ interface SelectedTodo {
 export default function App() {
   const timer = useTimer();
 
+  const bgmRef = useRef<BgmPlayerHandle>(null);
+
   const [selectedTodo, setSelectedTodo] = useState<SelectedTodo | null>(null);
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [syncedTodo, setSyncedTodo] = useState<{ id: string; focused_seconds: number } | null>(null);
@@ -30,6 +33,34 @@ export default function App() {
     mode: "focus" as "focus" | "break",
     todoId: null as string | null,
   });
+
+  // 키보드 단축키
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // input / textarea 입력 중엔 무시
+      const tag = (document.activeElement as HTMLElement)?.tagName.toLowerCase();
+      if (tag === "input" || tag === "textarea") return;
+
+      switch (e.code) {
+        case "Space":
+          e.preventDefault();
+          timer.isRunning ? timer.pause() : timer.start();
+          break;
+        case "KeyR":
+          timer.reset();
+          break;
+        case "KeyZ":
+          timer.switchMode();
+          break;
+        case "KeyX":
+          bgmRef.current?.toggle();
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [timer]);
 
   // 집중 모드 + 투두 선택 중일 때 1초마다 누적
   useEffect(() => {
@@ -106,7 +137,7 @@ export default function App() {
           </div>
         )}
       </div>
-      <BgmPlayer />
+      <BgmPlayer ref={bgmRef} />
     </>
   );
 }
