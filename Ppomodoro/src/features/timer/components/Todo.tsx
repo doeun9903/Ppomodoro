@@ -1,16 +1,38 @@
 import { useEffect, useRef, useState } from "react";
-import { CheckSquare, Square, Trash2, Plus, X, ListTodo } from "lucide-react";
+import { CheckSquare, Square, Trash2, Plus, X, ListTodo, Timer } from "lucide-react";
 
 interface Todo {
   id: string;
   content: string;
   is_done: boolean;
   created_at: string;
+  focused_seconds: number;
+}
+
+interface SelectedTodo {
+  id: string;
+  content: string;
+}
+
+interface Props {
+  selectedTodoId: string | null;
+  onSelect: (todo: SelectedTodo | null) => void;
+  sessionSeconds: number;
+  syncedTodo: { id: string; focused_seconds: number } | null;
 }
 
 const API = "http://localhost:3001/api/todos";
 
-export default function TodoPanel() {
+const formatFocusTime = (seconds: number) => {
+  if (seconds <= 0) return null;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0) return `${h}시간 ${m > 0 ? ` ${m}분` : ""}`;
+  if (m > 0) return `${m}분`;
+  return `${seconds}초`;
+};
+
+export default function TodoPanel({ selectedTodoId, onSelect, sessionSeconds, syncedTodo }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [input, setInput] = useState("");
@@ -18,12 +40,21 @@ export default function TodoPanel() {
   const [isAdding, setIsAdding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 패널 열릴 때 목록 불러오기
   useEffect(() => {
     if (!isOpen) return;
     fetchTodos();
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [isOpen]);
+
+  // 동기화 완료 시 → 해당 투두의 focused_seconds만 로컬에서 업데이트
+  useEffect(() => {
+    if (!syncedTodo) return;
+    setTodos((prev) =>
+      prev.map((t) =>
+        t.id === syncedTodo.id ? { ...t, focused_seconds: syncedTodo.focused_seconds } : t
+      )
+    );
+  }, [syncedTodo]);
 
   const fetchTodos = async () => {
     setIsLoading(true);
@@ -41,9 +72,8 @@ export default function TodoPanel() {
   const addTodo = async () => {
     const content = input.trim();
     if (!content || isAdding) return;
-
     setIsAdding(true);
-    setInput(""); // API 호출 전에 먼저 비워서 중복 제출 방지
+    setInput("");
     try {
       const res = await fetch(API, {
         method: "POST",
@@ -54,14 +84,13 @@ export default function TodoPanel() {
       setTodos((prev) => [...prev, newTodo]);
     } catch {
       console.error("투두 추가 실패");
-      setInput(content); // 실패 시 원복
+      setInput(content);
     } finally {
       setIsAdding(false);
     }
   };
 
   const toggleTodo = async (todo: Todo) => {
-    // 낙관적 업데이트 (UI 먼저)
     setTodos((prev) =>
       prev.map((t) => (t.id === todo.id ? { ...t, is_done: !t.is_done } : t))
     );
@@ -72,7 +101,6 @@ export default function TodoPanel() {
         body: JSON.stringify({ is_done: !todo.is_done }),
       });
     } catch {
-      // 실패하면 원복
       setTodos((prev) =>
         prev.map((t) => (t.id === todo.id ? { ...t, is_done: todo.is_done } : t))
       );
@@ -80,11 +108,20 @@ export default function TodoPanel() {
   };
 
   const deleteTodo = async (id: string) => {
+    if (selectedTodoId === id) onSelect(null);
     setTodos((prev) => prev.filter((t) => t.id !== id));
     try {
       await fetch(`${API}/${id}`, { method: "DELETE" });
     } catch {
       console.error("투두 삭제 실패");
+    }
+  };
+
+  const handleSelect = (todo: Todo) => {
+    if (selectedTodoId === todo.id) {
+      onSelect(null); // 다시 누르면 해제
+    } else {
+      onSelect({ id: todo.id, content: todo.content });
     }
   };
 
@@ -126,7 +163,9 @@ export default function TodoPanel() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && addTodo()}
+            onKeyDown={(e) =>
+              e.key === "Enter" && !e.nativeEvent.isComposing && addTodo()
+            }
             placeholder="할 일 추가..."
             className="flex-1 bg-white/10 text-white text-sm px-3 py-2 rounded-xl outline-none placeholder-white/30 border border-white/10 focus:border-white/30"
           />
@@ -144,56 +183,93 @@ export default function TodoPanel() {
           {isLoading && (
             <p className="text-white/30 text-xs text-center py-4">불러오는 중...</p>
           )}
-
           {!isLoading && todos.length === 0 && (
             <p className="text-white/30 text-xs text-center py-4">
               할 일을 추가해보세요 :)
             </p>
           )}
 
-          {todos.map((todo) => (
-            <div
-              key={todo.id}
-              className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-white/5 group transition-colors"
-            >
-              {/* 체크박스 */}
-              <button
-                onClick={() => toggleTodo(todo)}
-                className="shrink-0 text-white/60 hover:text-white transition-colors"
-              >
-                {todo.is_done ? (
-                  <CheckSquare size={18} className="text-[#4ecdc4]" />
-                ) : (
-                  <Square size={18} />
-                )}
-              </button>
+          {todos.map((todo) => {
+            const isSelected = selectedTodoId === todo.id;
+            const totalSeconds =
+              todo.focused_seconds + (isSelected ? sessionSeconds : 0);
+            const timeLabel = formatFocusTime(totalSeconds);
 
-              {/* 내용 */}
-              <span
-                className={`flex-1 text-sm leading-snug transition-colors ${
-                  todo.is_done
-                    ? "line-through text-white/30"
-                    : "text-white/85"
+            return (
+              <div
+                key={todo.id}
+                className={`flex items-center gap-2 p-2 rounded-xl transition-colors group ${
+                  isSelected
+                    ? "bg-white/10 border border-white/15"
+                    : "hover:bg-white/5"
                 }`}
               >
-                {todo.content}
-              </span>
+                {/* 타이머 선택 버튼 */}
+                <button
+                  onClick={() => handleSelect(todo)}
+                  title={isSelected ? "집중 해제" : "이 항목에 집중"}
+                  className="shrink-0 transition-colors"
+                >
+                  <Timer
+                    size={15}
+                    className={
+                      isSelected
+                        ? "text-[#ff6b6b]"
+                        : "text-white/20 group-hover:text-white/50"
+                    }
+                  />
+                </button>
 
-              {/* 삭제 */}
-              <button
-                onClick={() => deleteTodo(todo.id)}
-                className="shrink-0 opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 transition-all"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          ))}
+                {/* 체크박스 */}
+                <button
+                  onClick={() => toggleTodo(todo)}
+                  className="shrink-0 text-white/60 hover:text-white transition-colors"
+                >
+                  {todo.is_done ? (
+                    <CheckSquare size={17} className="text-[#4ecdc4]" />
+                  ) : (
+                    <Square size={17} />
+                  )}
+                </button>
+
+                {/* 내용 + 집중 시간 */}
+                <div className="flex-1 min-w-0 text-left">
+                  <p
+                    className={`text-sm leading-snug ${
+                      todo.is_done
+                        ? "line-through text-white/30"
+                        : "text-white/85"
+                    }`}
+                  >
+                    {todo.content}
+                  </p>
+                  {timeLabel && (
+                    <p className="text-[11px] text-white/35 mt-0.5 flex items-center gap-1">
+                      <Timer size={9} />
+                      {timeLabel}
+                      {isSelected && sessionSeconds > 0 && " (진행 중)"}
+                    </p>
+                  )}
+                </div>
+
+                {/* 삭제 */}
+                <button
+                  onClick={() => deleteTodo(todo.id)}
+                  className="shrink-0 opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 transition-all"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            );
+          })}
         </div>
 
         {/* 완료 항목 일괄 삭제 */}
         {doneCnt > 0 && (
           <button
-            onClick={() => todos.filter((t) => t.is_done).forEach((t) => deleteTodo(t.id))}
+            onClick={() =>
+              todos.filter((t) => t.is_done).forEach((t) => deleteTodo(t.id))
+            }
             className="mt-3 w-full text-xs text-white/30 hover:text-red-400 transition-colors pt-3 border-t border-white/10"
           >
             완료된 항목 삭제 ({doneCnt}개)
