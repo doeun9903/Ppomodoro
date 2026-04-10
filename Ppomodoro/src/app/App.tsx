@@ -118,6 +118,8 @@ export default function App() {
       <ClockDisplay />
       <Menu
         totalStudyTime={timer.totalStudyTime}
+        todayStudyTime={timer.todayStudyTime}
+        studyHistory={timer.studyHistory}
         resetTotalStudyTime={timer.resetTotalStudyTime}
         focusMins={timer.focusMins}
         breakMins={timer.breakMins}

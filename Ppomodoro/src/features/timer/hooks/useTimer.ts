@@ -8,6 +8,9 @@ const BREAK_DEFAULT = 10; // minutes
 
 const STORAGE_FOCUS_MINS = "timer-focus-mins";
 const STORAGE_BREAK_MINS = "timer-break-mins";
+const STORAGE_DAILY = "study-daily-stats"; // { "2025-04-10": 3600, ... }
+
+const getTodayKey = () => new Date().toISOString().split("T")[0];
 
 export function useTimer() {
   // 커스텀 타이머 설정 (분 단위)
@@ -35,16 +38,30 @@ export function useTimer() {
 
   const intervalRef = useRef<number | null>(null);
 
-  // 총 공부 시간 (초 단위)
+  // 총 공부 시간 (초 단위, 전체 누적)
   const [totalStudyTime, setTotalStudyTime] = useState<number>(() => {
     const saved = localStorage.getItem("total-study-time");
     return saved ? parseInt(saved, 10) : 0;
+  });
+
+  // 날짜별 공부 시간 { "2025-04-10": 3600, ... }
+  const [studyHistory, setStudyHistory] = useState<Record<string, number>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_DAILY) ?? "{}");
+    } catch {
+      return {};
+    }
   });
 
   // totalStudyTime이 바뀔 때마다 localStorage에 저장
   useEffect(() => {
     localStorage.setItem("total-study-time", totalStudyTime.toString());
   }, [totalStudyTime]);
+
+  // studyHistory가 바뀔 때마다 localStorage에 저장
+  useEffect(() => {
+    localStorage.setItem(STORAGE_DAILY, JSON.stringify(studyHistory));
+  }, [studyHistory]);
 
   // 모드에 따라 전체 시간 계산
   const totalTime = mode === "focus" ? focusTime : breakTime;
@@ -67,14 +84,17 @@ export function useTimer() {
     intervalRef.current = window.setInterval(() => {
       setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
 
-      // 집중 모드인 경우 총 공부 시간 1초 증가
+      // 집중 모드인 경우 총 공부 시간 + 날짜별 시간 1초 증가
       if (mode === "focus") {
         setTotalStudyTime((prev) => prev + 1);
+        setStudyHistory((prev) => {
+          const today = getTodayKey();
+          return { ...prev, [today]: (prev[today] ?? 0) + 1 };
+        });
       }
     }, 1000);
 
     //메모리 누수를 방지하는 역할
-    //중복 interval
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
@@ -96,7 +116,6 @@ export function useTimer() {
   const progress = (1 - timeLeft / totalTime) * 100;
 
   //컨트롤
-
   const start = () => {
     const startBell = new Audio("/audio/start_bell.wav");
     startBell.play().catch(console.error);
@@ -124,12 +143,17 @@ export function useTimer() {
     setTimeLeft(mode === "focus" ? newFocusMins * 60 : newBreakMins * 60);
   };
 
+  // 오늘 공부 시간
+  const todayStudyTime = studyHistory[getTodayKey()] ?? 0;
+
   return {
     timeLeft,
     mode,
     isRunning,
     progress,
     totalStudyTime,
+    todayStudyTime,
+    studyHistory,
     focusMins,
     breakMins,
     start,
