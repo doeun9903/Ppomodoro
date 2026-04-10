@@ -12,6 +12,7 @@ import {
   useTimer,
 } from "../features/timer";
 import type { BgmPlayerHandle } from "../features/timer/components/BgmPlayer";
+import ShortcutModal from "../shared/components/ShortcutModal";
 
 interface SelectedTodo {
   id: string;
@@ -23,6 +24,7 @@ export default function App() {
   const timer = useTimer();
 
   const bgmRef = useRef<BgmPlayerHandle>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const [selectedTodo, setSelectedTodo] = useState<SelectedTodo | null>(null);
   const [sessionSeconds, setSessionSeconds] = useState(0);
@@ -54,6 +56,12 @@ export default function App() {
           break;
         case "KeyX":
           bgmRef.current?.toggle();
+          break;
+        case "Slash":
+          if (e.shiftKey) setShowShortcuts((v) => !v); // ? = Shift + /
+          break;
+        case "Escape":
+          setShowShortcuts(false);
           break;
       }
     };
@@ -111,6 +119,9 @@ export default function App() {
       <Menu
         totalStudyTime={timer.totalStudyTime}
         resetTotalStudyTime={timer.resetTotalStudyTime}
+        focusMins={timer.focusMins}
+        breakMins={timer.breakMins}
+        onUpdateTimerSettings={timer.updateTimerSettings}
       />
       <TodoPanel
         selectedTodoId={selectedTodo?.id ?? null}
@@ -138,6 +149,7 @@ export default function App() {
         )}
       </div>
       <BgmPlayer ref={bgmRef} />
+      <ShortcutModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </>
   );
 }

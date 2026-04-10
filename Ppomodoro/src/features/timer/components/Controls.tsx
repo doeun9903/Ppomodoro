@@ -1,3 +1,5 @@
+import Tooltip from "../../../shared/components/Tooltip";
+
 interface Props {
   isRunning: boolean;
   start: () => void;
@@ -18,35 +20,41 @@ export default function Controls({
 }: Props) {
   return (
     <div className="flex gap-4 justify-center mb-8">
-      {isRunning ? (
+      <Tooltip label={isRunning ? "일시정지 [Space]" : "시작 [Space]"}>
+        {isRunning ? (
+          <button
+            onClick={pause}
+            className="px-6 py-3 rounded-2xl font-semibold transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:translate-y-0"
+          >
+            일시정지
+          </button>
+        ) : (
+          <button
+            onClick={start}
+            className="px-6 py-3 rounded-2xl font-semibold transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] bg-white text-[#1a1a2e] border border-white hover:bg-white/90 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:translate-y-0"
+          >
+            시작
+          </button>
+        )}
+      </Tooltip>
+
+      <Tooltip label="초기화 [R]">
         <button
-          onClick={pause}
+          onClick={reset}
           className="px-6 py-3 rounded-2xl font-semibold transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:translate-y-0"
         >
-          일시정지
+          초기화
         </button>
-      ) : (
+      </Tooltip>
+
+      <Tooltip label="모드 전환 [Z]">
         <button
-          onClick={start}
-          className="px-6 py-3 rounded-2xl font-semibold transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] bg-white text-[#1a1a2e] border border-white hover:bg-white/90 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:translate-y-0"
+          onClick={switchMode}
+          className="px-6 py-3 rounded-2xl font-semibold transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:translate-y-0"
         >
-          시작
+          모드 전환
         </button>
-      )}
-
-      <button
-        onClick={reset}
-        className="px-6 py-3 rounded-2xl font-semibold transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:translate-y-0"
-      >
-        초기화
-      </button>
-
-      <button
-        onClick={switchMode}
-        className="px-6 py-3 rounded-2xl font-semibold transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] active:translate-y-0"
-      >
-        모드 변환
-      </button>
+      </Tooltip>
     </div>
   );
 }

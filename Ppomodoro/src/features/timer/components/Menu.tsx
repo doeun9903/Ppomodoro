@@ -1,14 +1,36 @@
 import { useState } from "react";
-import { Menu as MenuIcon, X, Clock8, Trash2, AlertCircle } from "lucide-react";
+import { Menu as MenuIcon, X, Clock8, Trash2, AlertCircle, Settings, Timer } from "lucide-react";
 
 interface Props {
   totalStudyTime: number; // in seconds
   resetTotalStudyTime: () => void;
+  focusMins: number;
+  breakMins: number;
+  onUpdateTimerSettings: (focusMins: number, breakMins: number) => void;
 }
 
-export default function Menu({ totalStudyTime, resetTotalStudyTime }: Props) {
+export default function Menu({ totalStudyTime, resetTotalStudyTime, focusMins, breakMins, onUpdateTimerSettings }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [activeTab, setActiveTab] = useState<"study" | "settings">("study");
+
+  // 설정 로컬 상태 (적용 전까지 임시 보관)
+  const [localFocus, setLocalFocus] = useState(focusMins);
+  const [localBreak, setLocalBreak] = useState(breakMins);
+
+  const handleOpenMenu = () => {
+    setLocalFocus(focusMins);
+    setLocalBreak(breakMins);
+    setIsOpen(!isOpen);
+  };
+
+  const clamp = (val: number, min: number, max: number) =>
+    Math.max(min, Math.min(max, val));
+
+  const handleApply = () => {
+    onUpdateTimerSettings(localFocus, localBreak);
+    setIsOpen(false);
+  };
 
   // Format total seconds into HH:MM:SS
   const formatTotalTime = (totalSeconds: number) => {
@@ -35,7 +57,7 @@ export default function Menu({ totalStudyTime, resetTotalStudyTime }: Props) {
       <div className="absolute top-6 left-6 z-40">
         {/* Menu Toggle Button */}
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={handleOpenMenu}
           className="p-3 bg-white/10 backdrop-blur-md border border-white/20 shadow-lg rounded-full text-white/90 hover:bg-white/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center"
         >
           {isOpen ? <X size={20} /> : <MenuIcon size={20} />}
@@ -43,29 +65,119 @@ export default function Menu({ totalStudyTime, resetTotalStudyTime }: Props) {
 
         {/* Menu Dropdown Panel */}
         <div
-          className={`absolute top-14 left-0 w-64 bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl p-5 transition-all duration-300 origin-top-left ${
+          className={`absolute top-14 left-0 w-68 bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl overflow-hidden transition-all duration-300 origin-top-left ${
             isOpen
               ? "opacity-100 scale-100 visible"
               : "opacity-0 scale-95 invisible"
           }`}
         >
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2 text-white/90 font-semibold mb-2 border-b border-white/10 pb-3">
-              <Clock8 size={18} className="text-white/70" />
-              <span>총 공부 시간</span>
-            </div>
-
-            <div className="text-2xl font-bold tracking-tight text-white mb-2">
-              {formatTotalTime(totalStudyTime)}
-            </div>
-
+          {/* 탭 */}
+          <div className="flex border-b border-white/10">
             <button
-              onClick={() => setShowConfirm(true)}
-              className="w-full py-2.5 px-4 bg-red-500/20 hover:bg-red-500/30 text-red-200 border border-red-500/20 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+              onClick={() => setActiveTab("study")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-medium transition-colors ${
+                activeTab === "study"
+                  ? "text-white bg-white/10"
+                  : "text-white/40 hover:text-white/70"
+              }`}
             >
-              <Trash2 size={16} />
-              <span>시간 리셋</span>
+              <Clock8 size={13} />
+              공부 시간
             </button>
+            <button
+              onClick={() => setActiveTab("settings")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-medium transition-colors ${
+                activeTab === "settings"
+                  ? "text-white bg-white/10"
+                  : "text-white/40 hover:text-white/70"
+              }`}
+            >
+              <Settings size={13} />
+              타이머 설정
+            </button>
+          </div>
+
+          <div className="p-5">
+            {/* 총 공부 시간 탭 */}
+            {activeTab === "study" && (
+              <div className="flex flex-col gap-4">
+                <div className="text-2xl font-bold tracking-tight text-white">
+                  {formatTotalTime(totalStudyTime)}
+                </div>
+                <button
+                  onClick={() => setShowConfirm(true)}
+                  className="w-full py-2.5 px-4 bg-red-500/20 hover:bg-red-500/30 text-red-200 border border-red-500/20 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Trash2 size={16} />
+                  <span>시간 리셋</span>
+                </button>
+              </div>
+            )}
+
+            {/* 타이머 설정 탭 */}
+            {activeTab === "settings" && (
+              <div className="flex flex-col gap-5">
+                {/* 집중 시간 */}
+                <div>
+                  <div className="flex items-center gap-2 text-white/60 text-xs font-medium mb-2.5">
+                    <Timer size={12} className="text-[#ff6b6b]" />
+                    집중 시간
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setLocalFocus((v) => clamp(v - 5, 1, 120))}
+                      className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white text-base font-bold flex items-center justify-center transition-colors active:scale-90"
+                    >
+                      −
+                    </button>
+                    <div className="flex-1 text-center">
+                      <span className="text-2xl font-bold text-white tabular-nums">{localFocus}</span>
+                      <span className="text-white/40 text-xs ml-1">분</span>
+                    </div>
+                    <button
+                      onClick={() => setLocalFocus((v) => clamp(v + 5, 1, 120))}
+                      className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white text-base font-bold flex items-center justify-center transition-colors active:scale-90"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* 휴식 시간 */}
+                <div>
+                  <div className="flex items-center gap-2 text-white/60 text-xs font-medium mb-2.5">
+                    <Timer size={12} className="text-[#4ecdc4]" />
+                    휴식 시간
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setLocalBreak((v) => clamp(v - 5, 1, 60))}
+                      className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white text-base font-bold flex items-center justify-center transition-colors active:scale-90"
+                    >
+                      −
+                    </button>
+                    <div className="flex-1 text-center">
+                      <span className="text-2xl font-bold text-white tabular-nums">{localBreak}</span>
+                      <span className="text-white/40 text-xs ml-1">분</span>
+                    </div>
+                    <button
+                      onClick={() => setLocalBreak((v) => clamp(v + 5, 1, 60))}
+                      className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white text-base font-bold flex items-center justify-center transition-colors active:scale-90"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleApply}
+                  className="w-full py-2.5 px-4 bg-white/15 hover:bg-white/25 text-white border border-white/20 rounded-xl text-sm font-medium transition-colors"
+                >
+                  적용
+                </button>
+                <p className="text-white/25 text-xs text-center -mt-2">적용 시 타이머가 리셋돼요</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
