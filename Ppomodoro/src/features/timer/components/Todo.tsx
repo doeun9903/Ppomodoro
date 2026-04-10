@@ -15,6 +15,7 @@ export default function TodoPanel() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // 패널 열릴 때 목록 불러오기
@@ -38,18 +39,24 @@ export default function TodoPanel() {
   };
 
   const addTodo = async () => {
-    if (!input.trim()) return;
+    const content = input.trim();
+    if (!content || isAdding) return;
+
+    setIsAdding(true);
+    setInput(""); // API 호출 전에 먼저 비워서 중복 제출 방지
     try {
       const res = await fetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: input.trim() }),
+        body: JSON.stringify({ content }),
       });
       const newTodo = await res.json();
       setTodos((prev) => [...prev, newTodo]);
-      setInput("");
     } catch {
       console.error("투두 추가 실패");
+      setInput(content); // 실패 시 원복
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -119,13 +126,13 @@ export default function TodoPanel() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addTodo()}
+            onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && addTodo()}
             placeholder="할 일 추가..."
             className="flex-1 bg-white/10 text-white text-sm px-3 py-2 rounded-xl outline-none placeholder-white/30 border border-white/10 focus:border-white/30"
           />
           <button
             onClick={addTodo}
-            disabled={!input.trim()}
+            disabled={!input.trim() || isAdding}
             className="p-2 bg-white/10 rounded-xl text-white hover:bg-white/20 transition-colors disabled:opacity-30"
           >
             <Plus size={16} />
