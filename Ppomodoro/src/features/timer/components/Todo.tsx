@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { CheckSquare, Square, Trash2, Plus, X, ListTodo, Timer } from "lucide-react";
+import { CheckCircle2, Circle, Trash2, Plus, X, ListTodo, Timer } from "lucide-react";
 
 interface Todo {
   id: string;
   content: string;
   is_done: boolean;
+  completed_at: string | null;
   created_at: string;
   focused_seconds: number;
 }
@@ -91,19 +92,27 @@ export default function TodoPanel({ selectedTodoId, onSelect, sessionSeconds, sy
   };
 
   const toggleTodo = async (todo: Todo) => {
+    const completing = !todo.completed_at;
+    // 완료 처리하면 선택 해제
+    if (completing && selectedTodoId === todo.id) onSelect(null);
+
+    // 낙관적 업데이트
     setTodos((prev) =>
-      prev.map((t) => (t.id === todo.id ? { ...t, is_done: !t.is_done } : t))
+      prev.map((t) =>
+        t.id === todo.id
+          ? { ...t, completed_at: completing ? new Date().toISOString() : null, is_done: completing }
+          : t
+      )
     );
     try {
       await fetch(`${API}/${todo.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_done: !todo.is_done }),
+        body: JSON.stringify({ completed: completing }),
       });
     } catch {
-      setTodos((prev) =>
-        prev.map((t) => (t.id === todo.id ? { ...t, is_done: todo.is_done } : t))
-      );
+      // 실패 시 롤백
+      setTodos((prev) => prev.map((t) => (t.id === todo.id ? todo : t)));
     }
   };
 
@@ -118,14 +127,89 @@ export default function TodoPanel({ selectedTodoId, onSelect, sessionSeconds, sy
   };
 
   const handleSelect = (todo: Todo) => {
+    if (todo.completed_at) return; // 완료된 투두는 선택 불가
     if (selectedTodoId === todo.id) {
-      onSelect(null); // 다시 누르면 해제
+      onSelect(null);
     } else {
       onSelect({ id: todo.id, content: todo.content });
     }
   };
 
-  const doneCnt = todos.filter((t) => t.is_done).length;
+  const activeTodos = todos.filter((t) => !t.completed_at);
+  const completedTodos = todos.filter((t) => t.completed_at);
+
+  const renderTodoItem = (todo: Todo, isCompleted: boolean) => {
+    const isSelected = selectedTodoId === todo.id;
+    const totalSeconds = todo.focused_seconds + (isSelected ? sessionSeconds : 0);
+    const timeLabel = formatFocusTime(totalSeconds);
+
+    return (
+      <div
+        key={todo.id}
+        className={`flex items-center gap-2 p-2 rounded-xl transition-colors group ${
+          isSelected ? "bg-white/10 border border-white/15" : "hover:bg-white/5"
+        }`}
+      >
+        {/* 타이머 선택 버튼 (미완료만) */}
+        {!isCompleted ? (
+          <button
+            onClick={() => handleSelect(todo)}
+            title={isSelected ? "집중 해제" : "이 항목에 집중"}
+            className="shrink-0 transition-colors"
+          >
+            <Timer
+              size={15}
+              className={
+                isSelected
+                  ? "text-[#ff6b6b]"
+                  : "text-white/20 group-hover:text-white/50"
+              }
+            />
+          </button>
+        ) : (
+          <div className="w-[15px] shrink-0" />
+        )}
+
+        {/* 체크버튼 */}
+        <button
+          onClick={() => toggleTodo(todo)}
+          className="shrink-0 transition-colors"
+        >
+          {isCompleted ? (
+            <CheckCircle2 size={17} className="text-[#4ecdc4]" />
+          ) : (
+            <Circle size={17} className="text-white/30 hover:text-white/60" />
+          )}
+        </button>
+
+        {/* 내용 + 집중 시간 */}
+        <div className="flex-1 min-w-0 text-left">
+          <p
+            className={`text-sm leading-snug ${
+              isCompleted ? "line-through text-white/30" : "text-white/85"
+            }`}
+          >
+            {todo.content}
+          </p>
+          {timeLabel && (
+            <p className="text-[11px] text-white/35 mt-0.5 flex items-center gap-1">
+              <Timer size={9} />
+              {timeLabel}
+              {isSelected && sessionSeconds > 0 && " (진행 중)"}
+            </p>
+          )}
+        </div>
+
+        {/* 삭제 */}
+        <button
+          onClick={() => deleteTodo(todo.id)}
+          className="shrink-0 opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 transition-all"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="absolute top-6 right-6 z-40">
@@ -147,11 +231,11 @@ export default function TodoPanel({ selectedTodoId, onSelect, sessionSeconds, sy
         <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/10">
           <div className="flex items-center gap-2 text-white/90 font-semibold">
             <ListTodo size={16} className="text-white/60" />
-            <span>투두리스트</span>
+            <span>오늘의 투두</span>
           </div>
           {todos.length > 0 && (
             <span className="text-xs text-white/40">
-              {doneCnt}/{todos.length} 완료
+              {completedTodos.length}/{todos.length} 완료
             </span>
           )}
         </div>
@@ -179,7 +263,7 @@ export default function TodoPanel({ selectedTodoId, onSelect, sessionSeconds, sy
         </div>
 
         {/* 목록 */}
-        <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
+        <div className="flex flex-col gap-1 max-h-72 overflow-y-auto">
           {isLoading && (
             <p className="text-white/30 text-xs text-center py-4">불러오는 중...</p>
           )}
@@ -189,90 +273,29 @@ export default function TodoPanel({ selectedTodoId, onSelect, sessionSeconds, sy
             </p>
           )}
 
-          {todos.map((todo) => {
-            const isSelected = selectedTodoId === todo.id;
-            const totalSeconds =
-              todo.focused_seconds + (isSelected ? sessionSeconds : 0);
-            const timeLabel = formatFocusTime(totalSeconds);
+          {/* 미완료 투두 */}
+          {activeTodos.map((todo) => renderTodoItem(todo, false))}
 
-            return (
-              <div
-                key={todo.id}
-                className={`flex items-center gap-2 p-2 rounded-xl transition-colors group ${
-                  isSelected
-                    ? "bg-white/10 border border-white/15"
-                    : "hover:bg-white/5"
-                }`}
-              >
-                {/* 타이머 선택 버튼 */}
-                <button
-                  onClick={() => handleSelect(todo)}
-                  title={isSelected ? "집중 해제" : "이 항목에 집중"}
-                  className="shrink-0 transition-colors"
-                >
-                  <Timer
-                    size={15}
-                    className={
-                      isSelected
-                        ? "text-[#ff6b6b]"
-                        : "text-white/20 group-hover:text-white/50"
-                    }
-                  />
-                </button>
-
-                {/* 체크박스 */}
-                <button
-                  onClick={() => toggleTodo(todo)}
-                  className="shrink-0 text-white/60 hover:text-white transition-colors"
-                >
-                  {todo.is_done ? (
-                    <CheckSquare size={17} className="text-[#4ecdc4]" />
-                  ) : (
-                    <Square size={17} />
-                  )}
-                </button>
-
-                {/* 내용 + 집중 시간 */}
-                <div className="flex-1 min-w-0 text-left">
-                  <p
-                    className={`text-sm leading-snug ${
-                      todo.is_done
-                        ? "line-through text-white/30"
-                        : "text-white/85"
-                    }`}
-                  >
-                    {todo.content}
-                  </p>
-                  {timeLabel && (
-                    <p className="text-[11px] text-white/35 mt-0.5 flex items-center gap-1">
-                      <Timer size={9} />
-                      {timeLabel}
-                      {isSelected && sessionSeconds > 0 && " (진행 중)"}
-                    </p>
-                  )}
-                </div>
-
-                {/* 삭제 */}
-                <button
-                  onClick={() => deleteTodo(todo.id)}
-                  className="shrink-0 opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 transition-all"
-                >
-                  <Trash2 size={14} />
-                </button>
+          {/* 오늘 완료된 투두 */}
+          {completedTodos.length > 0 && (
+            <>
+              <div className="flex items-center gap-2 mt-2 mb-1">
+                <div className="flex-1 h-px bg-white/10" />
+                <span className="text-[10px] text-white/25 shrink-0">완료됨 {completedTodos.length}</span>
+                <div className="flex-1 h-px bg-white/10" />
               </div>
-            );
-          })}
+              {completedTodos.map((todo) => renderTodoItem(todo, true))}
+            </>
+          )}
         </div>
 
         {/* 완료 항목 일괄 삭제 */}
-        {doneCnt > 0 && (
+        {completedTodos.length > 0 && (
           <button
-            onClick={() =>
-              todos.filter((t) => t.is_done).forEach((t) => deleteTodo(t.id))
-            }
+            onClick={() => completedTodos.forEach((t) => deleteTodo(t.id))}
             className="mt-3 w-full text-xs text-white/30 hover:text-red-400 transition-colors pt-3 border-t border-white/10"
           >
-            완료된 항목 삭제 ({doneCnt}개)
+            완료된 항목 삭제 ({completedTodos.length}개)
           </button>
         )}
       </div>
