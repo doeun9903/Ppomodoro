@@ -38,7 +38,7 @@ export function useTimer() {
 
   const intervalRef = useRef<number | null>(null);
 
-  // 총 공부 시간 (초 단위)
+  // 총 공부 시간 (초 단위, 전체 누적)
   const [totalStudyTime, setTotalStudyTime] = useState<number>(() => {
     const saved = localStorage.getItem("total-study-time");
     return saved ? parseInt(saved, 10) : 0;
@@ -95,7 +95,6 @@ export function useTimer() {
     }, 1000);
 
     //메모리 누수를 방지하는 역할
-    //중복 interval
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
@@ -117,7 +116,6 @@ export function useTimer() {
   const progress = (1 - timeLeft / totalTime) * 100;
 
   //컨트롤
-
   const start = () => {
     const startBell = new Audio("/audio/start_bell.wav");
     startBell.play().catch(console.error);
