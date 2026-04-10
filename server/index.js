@@ -92,6 +92,31 @@ app.patch("/api/todos/:id", async (req, res) => {
   res.json(data);
 });
 
+// 집중 시간 누적
+app.patch("/api/todos/:id/focus", async (req, res) => {
+  const { id } = req.params;
+  const { seconds } = req.body;
+  if (!seconds || seconds <= 0) return res.status(400).json({ error: "seconds required" });
+
+  const { data: current, error: fetchErr } = await supabase
+    .from("todos")
+    .select("focused_seconds")
+    .eq("id", id)
+    .single();
+
+  if (fetchErr) return res.status(500).json({ error: fetchErr.message });
+
+  const { data, error } = await supabase
+    .from("todos")
+    .update({ focused_seconds: (current.focused_seconds ?? 0) + seconds })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
 // 삭제
 app.delete("/api/todos/:id", async (req, res) => {
   const { id } = req.params;
