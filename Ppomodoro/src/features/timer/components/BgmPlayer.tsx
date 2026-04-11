@@ -125,7 +125,7 @@ const BgmPlayer = forwardRef<BgmPlayerHandle>(function BgmPlayer(_, ref) {
     setIsSearching(true);
     try {
       const res = await fetch(
-        `http://localhost:3001/api/youtube/search?q=${encodeURIComponent(query)}`
+        `${import.meta.env.VITE_API_URL ?? "http://localhost:3001"}/api/youtube/search?q=${encodeURIComponent(query)}`
       );
       const data = await res.json();
       setResults(data);

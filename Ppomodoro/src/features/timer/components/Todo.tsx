@@ -22,7 +22,8 @@ interface Props {
   syncedTodo: { id: string; focused_seconds: number } | null;
 }
 
-const API = "http://localhost:3001/api/todos";
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+const API = `${API_BASE}/api/todos`;
 
 const formatFocusTime = (seconds: number) => {
   if (seconds <= 0) return null;
