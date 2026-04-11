@@ -95,7 +95,7 @@ export default function App() {
       accRef.current = 0;
       setSessionSeconds(0);
 
-      fetch(`http://localhost:3001/api/todos/${todoId}/focus`, {
+      fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:3001"}/api/todos/${todoId}/focus`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ seconds: secs }),

@@ -87,7 +87,8 @@ export default function Menu({
   useEffect(() => {
     if (!isOpen || activeTab !== "history") return;
     setLoadingHistory(true);
-    fetch("http://localhost:3001/api/todos/history")
+    const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+    fetch(`${API_BASE}/api/todos/history`)
       .then((r) => r.json())
       .then(setTodoHistory)
       .catch(console.error)
