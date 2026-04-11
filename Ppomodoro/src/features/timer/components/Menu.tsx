@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Menu as MenuIcon, X, Clock8, Trash2, AlertCircle,
+  Menu as MenuIcon, X, Trash2, AlertCircle,
   Settings, Timer, BarChart2, CalendarDays, CheckCircle2, Circle,
 } from "lucide-react";
 
