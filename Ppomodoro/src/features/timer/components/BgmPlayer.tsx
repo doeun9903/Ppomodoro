@@ -18,6 +18,12 @@ declare global {
 
 const FAVORITES_KEY = "bgm-favorites";
 
+// 노션 등 외부 iframe 안에 임베드됐는지 감지
+const isEmbedded = (() => {
+  try { return window.self !== window.top; }
+  catch { return true; }
+})();
+
 export interface BgmPlayerHandle {
   toggle: () => void;
 }
@@ -256,6 +262,19 @@ const BgmPlayer = forwardRef<BgmPlayerHandle>(function BgmPlayer(_, ref) {
         </div>
       )}
 
+      {/* 임베드 환경: YouTube iframe 직접 렌더링 */}
+      {isEmbedded && currentTrack && (
+        <div className="w-80 rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+          <iframe
+            key={currentTrack.id}
+            src={`https://www.youtube.com/embed/${currentTrack.id}?autoplay=1&rel=0`}
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            className="w-full aspect-video"
+          />
+        </div>
+      )}
+
       {/* 플레이어 바 */}
       <div className="flex items-center gap-3 px-5 py-3 rounded-full bg-black/60 backdrop-blur-md border border-white/10 shadow-lg">
         <div ref={containerRef} className="hidden" />
@@ -293,33 +312,37 @@ const BgmPlayer = forwardRef<BgmPlayerHandle>(function BgmPlayer(_, ref) {
           </button>
         )}
 
-        {/* 재생/일시정지 */}
-        <Tooltip label={isPlaying ? "일시정지 [X]" : "재생 [X]"}>
-          <button
-            onClick={togglePlay}
-            disabled={!isReady || !currentTrack}
-            className="text-white hover:text-white/80 hover:scale-110 active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center"
-          >
-            {isPlaying
-              ? <Pause size={20} fill="currentColor" />
-              : <Play size={20} fill="currentColor" className="ml-0.5" />
-            }
-          </button>
-        </Tooltip>
+        {/* 재생/일시정지: 임베드 환경에선 YouTube 네이티브 컨트롤 사용 */}
+        {!isEmbedded && (
+          <Tooltip label={isPlaying ? "일시정지 [X]" : "재생 [X]"}>
+            <button
+              onClick={togglePlay}
+              disabled={!isReady || !currentTrack}
+              className="text-white hover:text-white/80 hover:scale-110 active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center"
+            >
+              {isPlaying
+                ? <Pause size={20} fill="currentColor" />
+                : <Play size={20} fill="currentColor" className="ml-0.5" />
+              }
+            </button>
+          </Tooltip>
+        )}
 
-        {/* 볼륨 */}
-        <div className="flex items-center gap-2">
-          <Volume2 size={16} className="text-white/70" />
-          <input
-            type="range"
-            min="0"
-            max="100"
-            step="1"
-            value={volume}
-            onChange={(e) => setVolume(Number(e.target.value))}
-            className="w-20 accent-white"
-          />
-        </div>
+        {/* 볼륨: 일반 환경에서만 표시 */}
+        {!isEmbedded && (
+          <div className="flex items-center gap-2">
+            <Volume2 size={16} className="text-white/70" />
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={volume}
+              onChange={(e) => setVolume(Number(e.target.value))}
+              className="w-20 accent-white"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
