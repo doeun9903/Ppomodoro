@@ -18,25 +18,13 @@ declare global {
 
 const FAVORITES_KEY = "bgm-favorites";
 
-// 노션 등 외부 iframe 안에 임베드됐는지 감지
-const isEmbedded = (() => {
-  try { return window.self !== window.top; }
-  catch { return true; }
-})();
-
 export interface BgmPlayerHandle {
   toggle: () => void;
 }
 
 const BgmPlayer = forwardRef<BgmPlayerHandle>(function BgmPlayer(_, ref) {
-  // ── 일반 모드용 ──────────────────────────────────────
   const playerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // ── 임베드 모드용 (postMessage 직접 제어) ────────────
-  const embedIframeRef = useRef<HTMLIFrameElement>(null);
-
-  // ── 공용 상태 ────────────────────────────────────────
   const volumeRef = useRef<number>(50);
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -61,10 +49,8 @@ const BgmPlayer = forwardRef<BgmPlayerHandle>(function BgmPlayer(_, ref) {
 
   useEffect(() => { volumeRef.current = volume; }, [volume]);
 
-  // ── 일반 모드: YouTube IFrame API 초기화 ─────────────
+  // ── YouTube IFrame API 초기화 ─────────────
   useEffect(() => {
-    if (isEmbedded) return;
-
     const createPlayer = () => {
       if (!containerRef.current) return;
       playerRef.current = new window.YT.Player(containerRef.current, {
@@ -100,58 +86,9 @@ const BgmPlayer = forwardRef<BgmPlayerHandle>(function BgmPlayer(_, ref) {
     return () => { playerRef.current?.destroy(); };
   }, []);
 
-  // ── 임베드 모드: YouTube postMessage 수신 ────────────
-  useEffect(() => {
-    if (!isEmbedded) return;
-
-    const handleMessage = (e: MessageEvent) => {
-      if (e.origin !== "https://www.youtube.com") return;
-      try {
-        const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
-
-        // 플레이어 준비 완료
-        if (data.event === "onReady") {
-          setIsReady(true);
-          sendYTCommand("setVolume", volumeRef.current);
-        }
-
-        // 재생 상태 변화
-        if (data.event === "infoDelivery" && data.info?.playerState !== undefined) {
-          const state = data.info.playerState;
-          setIsPlaying(state === 1);
-          // 끝나면 자동 반복
-          if (state === 0) sendYTCommand("playVideo");
-        }
-      } catch {}
-    };
-
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, []);
-
-  // ── 임베드 모드: 트랙 변경 시 3초 후 ready 폴백 ──────
-  useEffect(() => {
-    if (!isEmbedded || !currentTrack) return;
-    setIsReady(false);
-    const timer = setTimeout(() => setIsReady(true), 3000);
-    return () => clearTimeout(timer);
-  }, [currentTrack]);
-
-  // ── 임베드 모드: postMessage 명령 전송 ───────────────
-  const sendYTCommand = (func: string, args: unknown = "") => {
-    embedIframeRef.current?.contentWindow?.postMessage(
-      JSON.stringify({ event: "command", func, args }),
-      "*"
-    );
-  };
-
   // ── 볼륨 변경 ────────────────────────────────────────
   useEffect(() => {
-    if (isEmbedded) {
-      sendYTCommand("setVolume", volume);
-    } else {
-      playerRef.current?.setVolume?.(volume);
-    }
+    playerRef.current?.setVolume?.(volume);
     localStorage.setItem("bgm-volume", String(volume));
   }, [volume]);
 
@@ -193,28 +130,13 @@ const BgmPlayer = forwardRef<BgmPlayerHandle>(function BgmPlayer(_, ref) {
     setResults([]);
     setQuery("");
     setIsPlaying(false);
-
-    if (isEmbedded) {
-      // key 변경으로 iframe 재마운트 → autoplay=1로 자동 시작
-    } else {
-      playerRef.current?.loadVideoById(track.id);
-    }
+    playerRef.current?.loadVideoById(track.id);
   };
 
   // ── 재생/일시정지 토글 ───────────────────────────────
   const togglePlay = () => {
-    if (isEmbedded) {
-      if (isPlaying) {
-        sendYTCommand("pauseVideo");
-        setIsPlaying(false);
-      } else {
-        sendYTCommand("playVideo");
-        setIsPlaying(true);
-      }
-    } else {
-      if (!playerRef.current) return;
-      isPlaying ? playerRef.current.pauseVideo() : playerRef.current.playVideo();
-    }
+    if (!playerRef.current) return;
+    isPlaying ? playerRef.current.pauseVideo() : playerRef.current.playVideo();
   };
 
   useImperativeHandle(ref, () => ({ toggle: togglePlay }));
@@ -223,33 +145,6 @@ const BgmPlayer = forwardRef<BgmPlayerHandle>(function BgmPlayer(_, ref) {
 
   return (
     <div className="fixed bottom-2 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-[1000] scale-90 sm:scale-100">
-
-      {/* 임베드 모드: 미니 YouTube 플레이어 (브라우저 음소거 방지용으로 실제 표시) */}
-      {isEmbedded && currentTrack && (
-        <div className="w-80 rounded-2xl overflow-hidden border border-white/10 shadow-2xl relative">
-          <iframe
-            ref={embedIframeRef}
-            key={currentTrack.id}
-            src={`https://www.youtube.com/embed/${currentTrack.id}?enablejsapi=1&autoplay=1&controls=1&loop=1&playlist=${currentTrack.id}&rel=0`}
-            allow="autoplay; encrypted-media; picture-in-picture"
-            allowFullScreen
-            className="w-full aspect-video block"
-            title="BGM"
-          />
-          {/* 커스텀 재생/일시정지 오버레이 */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/30">
-            <button
-              onClick={togglePlay}
-              className="w-12 h-12 rounded-full bg-black/60 flex items-center justify-center text-white hover:scale-110 transition-transform"
-            >
-              {isPlaying
-                ? <Pause size={22} fill="currentColor" />
-                : <Play size={22} fill="currentColor" className="ml-1" />
-              }
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* 검색 / 즐겨찾기 패널 */}
       {showPanel && (
