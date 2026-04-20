@@ -224,16 +224,30 @@ const BgmPlayer = forwardRef<BgmPlayerHandle>(function BgmPlayer(_, ref) {
   return (
     <div className="fixed bottom-2 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-[1000] scale-90 sm:scale-100">
 
-      {/* 임베드 모드: YouTube iframe 화면 밖에 숨겨두기 */}
+      {/* 임베드 모드: 미니 YouTube 플레이어 (브라우저 음소거 방지용으로 실제 표시) */}
       {isEmbedded && currentTrack && (
-        <iframe
-          ref={embedIframeRef}
-          key={currentTrack.id}
-          src={`https://www.youtube.com/embed/${currentTrack.id}?enablejsapi=1&autoplay=1&controls=0&loop=1&playlist=${currentTrack.id}`}
-          allow="autoplay; encrypted-media"
-          style={{ position: "fixed", top: "-9999px", left: "-9999px", width: "1px", height: "1px" }}
-          title="BGM"
-        />
+        <div className="w-80 rounded-2xl overflow-hidden border border-white/10 shadow-2xl relative">
+          <iframe
+            ref={embedIframeRef}
+            key={currentTrack.id}
+            src={`https://www.youtube.com/embed/${currentTrack.id}?enablejsapi=1&autoplay=1&controls=0&loop=1&playlist=${currentTrack.id}&rel=0`}
+            allow="autoplay; encrypted-media"
+            className="w-full aspect-video block"
+            title="BGM"
+          />
+          {/* 커스텀 재생/일시정지 오버레이 */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/30">
+            <button
+              onClick={togglePlay}
+              className="w-12 h-12 rounded-full bg-black/60 flex items-center justify-center text-white hover:scale-110 transition-transform"
+            >
+              {isPlaying
+                ? <Pause size={22} fill="currentColor" />
+                : <Play size={22} fill="currentColor" className="ml-1" />
+              }
+            </button>
+          </div>
+        </div>
       )}
 
       {/* 검색 / 즐겨찾기 패널 */}
