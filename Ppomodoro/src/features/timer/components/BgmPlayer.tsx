@@ -230,8 +230,9 @@ const BgmPlayer = forwardRef<BgmPlayerHandle>(function BgmPlayer(_, ref) {
           <iframe
             ref={embedIframeRef}
             key={currentTrack.id}
-            src={`https://www.youtube.com/embed/${currentTrack.id}?enablejsapi=1&autoplay=1&controls=0&loop=1&playlist=${currentTrack.id}&rel=0`}
-            allow="autoplay; encrypted-media"
+            src={`https://www.youtube.com/embed/${currentTrack.id}?enablejsapi=1&autoplay=1&controls=1&loop=1&playlist=${currentTrack.id}&rel=0`}
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
             className="w-full aspect-video block"
             title="BGM"
           />
