@@ -13,6 +13,8 @@ import {
 } from "../features/timer";
 import type { BgmPlayerHandle } from "../features/timer/components/BgmPlayer";
 import ShortcutModal from "../shared/components/ShortcutModal";
+import isEmbedded from "../shared/utils/isEmbedded";
+import EmbedWidget from "../features/timer/components/EmbedWidget";
 
 interface SelectedTodo {
   id: string;
@@ -21,6 +23,9 @@ interface SelectedTodo {
 
 // app은 조립만 해주는 역할!!
 export default function App() {
+  if (isEmbedded) return <EmbedWidget />;
+
+
   const timer = useTimer();
 
   const bgmRef = useRef<BgmPlayerHandle>(null);
