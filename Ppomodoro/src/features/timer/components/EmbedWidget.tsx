@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Play, Pause, RotateCcw, Search, Star, Music,
-  ArrowLeftRight, X,
+  ArrowLeftRight, X, Sun, Moon,
 } from "lucide-react";
 import { useTimer } from "../hooks/useTimer";
 
@@ -13,7 +13,8 @@ interface Track {
 }
 
 const FAVORITES_KEY = "bgm-favorites";
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+const THEME_KEY     = "widget-theme";
+const API_BASE      = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
 const formatTime = (s: number) => {
   const m = Math.floor(s / 60);
@@ -24,18 +25,26 @@ const formatTime = (s: number) => {
 export default function EmbedWidget() {
   const timer = useTimer();
 
-  const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Track[]>([]);
-  const [favorites, setFavorites] = useState<Track[]>(() => {
+  const [theme, setTheme] = useState<"dark" | "light">(() =>
+    (localStorage.getItem(THEME_KEY) as "dark" | "light") ?? "dark"
+  );
+  const [currentTrack, setCurrentTrack]   = useState<Track | null>(null);
+  const [query, setQuery]                 = useState("");
+  const [results, setResults]             = useState<Track[]>([]);
+  const [favorites, setFavorites]         = useState<Track[]>(() => {
     try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) ?? "[]"); }
     catch { return []; }
   });
-  const [activeTab, setActiveTab] = useState<"search" | "favorites">("search");
-  const [isSearching, setIsSearching] = useState(false);
+  const [activeTab, setActiveTab]         = useState<"search" | "favorites">("search");
+  const [isSearching, setIsSearching]     = useState(false);
+
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    localStorage.setItem(THEME_KEY, next);
+  };
 
   const isFavorite = (id: string) => favorites.some((f) => f.id === id);
-
   const toggleFavorite = (track: Track, e?: React.MouseEvent) => {
     e?.stopPropagation();
     const next = isFavorite(track.id)
@@ -49,42 +58,73 @@ export default function EmbedWidget() {
     if (!query.trim()) return;
     setIsSearching(true);
     try {
-      const res = await fetch(`${API_BASE}/api/youtube/search?q=${encodeURIComponent(query)}`);
+      const res  = await fetch(`${API_BASE}/api/youtube/search?q=${encodeURIComponent(query)}`);
       const data = await res.json();
       setResults(data);
     } catch { console.error("검색 실패"); }
     finally { setIsSearching(false); }
   };
 
+  /* ── 색상 토큰 ── */
+  const d = theme === "dark";
+
   const accent    = timer.mode === "focus" ? "#ff6b6b" : "#4ecdc4";
   const accentBtn = timer.mode === "focus"
     ? "bg-[#ff6b6b] hover:bg-[#ff5252]"
     : "bg-[#4ecdc4] hover:bg-[#3dbdb5]";
   const modeBadge = timer.mode === "focus"
-    ? "bg-[#ff6b6b]/15 text-[#ff6b6b]"
-    : "bg-[#4ecdc4]/15 text-[#4ecdc4]";
+    ? d ? "bg-[#ff6b6b]/15 text-[#ff6b6b]" : "bg-[#ff6b6b]/10 text-[#e05555]"
+    : d ? "bg-[#4ecdc4]/15 text-[#4ecdc4]" : "bg-[#4ecdc4]/10 text-[#2da89f]";
+
+  const tk = {
+    page:         d ? "bg-[#0f1117]"                                   : "bg-[#f0f2f5]",
+    card:         d ? "bg-[#1a1f2e] border-white/[0.08]"               : "bg-white border-black/[0.07]",
+    textPrimary:  d ? "text-white"                                      : "text-[#111827]",
+    textSecond:   d ? "text-white/50"                                   : "text-[#6b7280]",
+    textMuted:    d ? "text-white/25"                                   : "text-[#9ca3af]",
+    progressBg:   d ? "bg-white/[0.07]"                                 : "bg-black/[0.08]",
+    ghostBtn:     d ? "bg-white/[0.07] hover:bg-white/15 text-white/40 hover:text-white/80"
+                    : "bg-black/[0.05] hover:bg-black/10 text-[#9ca3af] hover:text-[#374151]",
+    input:        d ? "bg-white/[0.07] border-white/[0.07] focus:border-white/25 text-white placeholder-white/20"
+                    : "bg-[#f9fafb] border-[#e5e7eb] focus:border-[#9ca3af] text-[#111827] placeholder-[#9ca3af]",
+    tabWrap:      d ? "bg-white/[0.04] border-white/[0.07]"            : "bg-black/[0.04] border-black/[0.07]",
+    tabActive:    d ? "bg-white/10 text-white"                         : "bg-white text-[#111827] shadow-sm",
+    tabInactive:  d ? "text-white/30 hover:text-white/60"              : "text-[#9ca3af] hover:text-[#6b7280]",
+    trackHover:   d ? "hover:bg-white/[0.06]"                          : "hover:bg-black/[0.04]",
+    trackPlaying: d ? "bg-white/[0.06]"                                : "bg-black/[0.04]",
+    searchBtn:    d ? "bg-white/[0.07] text-white/50 hover:text-white hover:bg-white/15"
+                    : "bg-black/[0.05] text-[#9ca3af] hover:text-[#374151] hover:bg-black/10",
+    emptyBorder:  d ? "border-white/10 hover:border-white/20 hover:bg-white/[0.03]"
+                    : "border-black/10 hover:border-black/20 hover:bg-black/[0.02]",
+    emptyIconBg:  d ? "bg-white/[0.05]"                                : "bg-black/[0.05]",
+    themeBtn:     d ? "text-white/25 hover:text-white/60"              : "text-[#9ca3af] hover:text-[#374151]",
+    divider:      d ? "border-white/[0.06]"                            : "border-black/[0.06]",
+  };
 
   return (
-    <div className="w-full min-h-screen bg-[#0f1117] overflow-y-auto">
+    <div className={`w-full min-h-screen overflow-y-auto ${tk.page}`}>
 
-      {/* ── 타이머 (항상 상단 고정) ── */}
-      <div className="sticky top-0 z-20 bg-[#0f1117] px-3 pt-3 pb-2">
-        <div className="bg-[#1a1f2e] border border-white/[0.08] rounded-2xl p-4">
+      {/* ── 타이머 (sticky) ── */}
+      <div className={`sticky top-0 z-20 ${tk.page} px-3 pt-3 pb-2`}>
+        <div className={`border rounded-2xl p-4 ${tk.card}`}>
 
-          {/* 모드 + 설정 시간 */}
+          {/* 헤더 */}
           <div className="flex items-center justify-between mb-3">
-            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full tracking-wide ${modeBadge}`}>
+            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${modeBadge}`}>
               {timer.mode === "focus" ? "🍅 집중" : "☕ 휴식"}
             </span>
-            <button
-              onClick={timer.switchMode}
-              className="flex items-center gap-1.5 text-white/25 hover:text-white/60 text-[11px] transition-colors"
-            >
-              <span className="tabular-nums">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={timer.switchMode}
+                className={`flex items-center gap-1 text-[11px] tabular-nums transition-colors ${tk.textMuted} hover:${d ? "text-white/60" : "text-[#6b7280]"}`}
+              >
                 {timer.mode === "focus" ? `${timer.focusMins}분` : `${timer.breakMins}분`}
-              </span>
-              <ArrowLeftRight size={11} />
-            </button>
+                <ArrowLeftRight size={10} />
+              </button>
+              <button onClick={toggleTheme} className={`transition-colors ${tk.themeBtn}`}>
+                {d ? <Sun size={14} /> : <Moon size={14} />}
+              </button>
+            </div>
           </div>
 
           {/* 시간 */}
@@ -96,14 +136,10 @@ export default function EmbedWidget() {
           </div>
 
           {/* 진행 바 */}
-          <div className="h-1 rounded-full bg-white/[0.07] overflow-hidden mb-4">
+          <div className={`h-1 rounded-full overflow-hidden mb-4 ${tk.progressBg}`}>
             <div
               className="h-full rounded-full"
-              style={{
-                width: `${timer.progress}%`,
-                background: accent,
-                transition: "width 1s linear",
-              }}
+              style={{ width: `${timer.progress}%`, background: accent, transition: "width 1s linear" }}
             />
           </div>
 
@@ -111,11 +147,10 @@ export default function EmbedWidget() {
           <div className="flex items-center justify-center gap-3">
             <button
               onClick={timer.reset}
-              className="w-10 h-10 rounded-full bg-white/[0.07] hover:bg-white/15 text-white/40 hover:text-white/80 flex items-center justify-center transition-all active:scale-90"
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 ${tk.ghostBtn}`}
             >
               <RotateCcw size={15} />
             </button>
-
             <button
               onClick={timer.isRunning ? timer.pause : timer.start}
               className={`flex items-center gap-2 px-8 py-2.5 rounded-full text-white text-sm font-bold transition-all active:scale-95 ${accentBtn}`}
@@ -125,14 +160,12 @@ export default function EmbedWidget() {
                 : <><Play  size={15} fill="currentColor" className="ml-0.5" />시작</>
               }
             </button>
-
-            {/* 리셋 자리 채우기용 더미 (대칭) */}
             <div className="w-10 h-10" />
           </div>
         </div>
       </div>
 
-      {/* ── 음악 (스크롤 영역) ── */}
+      {/* ── 음악 ── */}
       <div className="px-3 pb-4 flex flex-col gap-2">
 
         {/* Now Playing */}
@@ -146,9 +179,7 @@ export default function EmbedWidget() {
               className="w-full aspect-video block"
               title={currentTrack.title}
             />
-            {/* 블러 오버레이 — 호버 시 사라짐 */}
             <div className="absolute inset-0 backdrop-blur-md bg-black/70 transition-opacity duration-300 group-hover:opacity-0 pointer-events-none" />
-            {/* 트랙 정보 */}
             <div className="absolute inset-0 flex items-center gap-3 px-4 transition-opacity duration-300 group-hover:opacity-0 pointer-events-none">
               <img src={currentTrack.thumbnail} alt="" className="w-11 h-11 rounded-xl object-cover shrink-0 shadow-lg" />
               <div className="flex-1 min-w-0">
@@ -156,7 +187,6 @@ export default function EmbedWidget() {
                 <p className="text-white/40 text-xs truncate mt-0.5">{currentTrack.channel}</p>
               </div>
             </div>
-            {/* 액션 버튼 */}
             <div className="absolute top-2.5 right-2.5 z-10 flex gap-1">
               <button
                 onClick={(e) => toggleFavorite(currentTrack, e)}
@@ -171,7 +201,6 @@ export default function EmbedWidget() {
                 <X size={12} className="text-white/70" />
               </button>
             </div>
-            {/* 호버 힌트 */}
             <p className="absolute bottom-2 left-0 right-0 text-center text-[10px] text-white/40 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
               마우스를 올려 컨트롤
             </p>
@@ -179,25 +208,23 @@ export default function EmbedWidget() {
         ) : (
           <button
             onClick={() => setActiveTab("search")}
-            className="flex items-center gap-3 p-3.5 rounded-2xl border border-dashed border-white/10 hover:border-white/20 hover:bg-white/[0.03] transition-all text-left"
+            className={`flex items-center gap-3 p-3.5 rounded-2xl border border-dashed transition-all text-left ${tk.emptyBorder}`}
           >
-            <div className="w-9 h-9 rounded-xl bg-white/[0.05] flex items-center justify-center shrink-0">
-              <Music size={16} className="text-white/25" />
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${tk.emptyIconBg}`}>
+              <Music size={16} className={tk.textMuted} />
             </div>
-            <span className="text-white/30 text-xs">노래를 검색해서 틀어보세요</span>
+            <span className={`text-xs ${tk.textMuted}`}>노래를 검색해서 틀어보세요</span>
           </button>
         )}
 
         {/* 탭 */}
-        <div className="flex gap-1 bg-white/[0.04] border border-white/[0.07] p-1 rounded-xl">
+        <div className={`flex gap-1 border p-1 rounded-xl ${tk.tabWrap}`}>
           {(["search", "favorites"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
-                activeTab === tab
-                  ? "bg-white/10 text-white shadow-sm"
-                  : "text-white/30 hover:text-white/60"
+                activeTab === tab ? tk.tabActive : tk.tabInactive
               }`}
             >
               {tab === "favorites" && <Star size={11} />}
@@ -206,7 +233,7 @@ export default function EmbedWidget() {
           ))}
         </div>
 
-        {/* 검색 */}
+        {/* 검색 입력 */}
         {activeTab === "search" && (
           <div className="flex gap-2">
             <input
@@ -215,23 +242,28 @@ export default function EmbedWidget() {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && search()}
               placeholder="노래 제목, 아티스트 검색..."
-              className="flex-1 bg-white/[0.07] text-white text-xs px-3.5 py-2.5 rounded-xl outline-none placeholder-white/20 border border-white/[0.07] focus:border-white/25 focus:bg-white/10 transition-all"
+              className={`flex-1 text-xs px-3.5 py-2.5 rounded-xl outline-none border transition-all ${tk.input}`}
             />
             <button
               onClick={search}
-              className="w-10 bg-white/[0.07] rounded-xl text-white/50 hover:text-white hover:bg-white/15 flex items-center justify-center transition-all active:scale-95"
+              className={`w-10 rounded-xl flex items-center justify-center transition-all active:scale-95 ${tk.searchBtn}`}
             >
               <Search size={14} />
             </button>
           </div>
         )}
 
-        {/* 결과 */}
+        {/* 구분선 */}
+        {(results.length > 0 || (activeTab === "favorites" && favorites.length > 0)) && (
+          <div className={`border-t ${tk.divider}`} />
+        )}
+
+        {/* 결과 목록 */}
         <div className="flex flex-col gap-0.5">
           {activeTab === "search" && (
             <>
               {isSearching && (
-                <p className="text-white/25 text-xs text-center py-4">검색 중...</p>
+                <p className={`text-xs text-center py-4 ${tk.textMuted}`}>검색 중...</p>
               )}
               {results.map((r) => (
                 <TrackItem
@@ -241,15 +273,15 @@ export default function EmbedWidget() {
                   isFav={isFavorite(r.id)}
                   onPlay={() => setCurrentTrack(r)}
                   onToggleFav={(e) => toggleFavorite(r, e)}
+                  tk={tk}
                 />
               ))}
             </>
           )}
-
           {activeTab === "favorites" && (
             <>
               {favorites.length === 0 ? (
-                <p className="text-white/20 text-xs text-center py-4">검색 후 ★ 눌러서 저장하세요</p>
+                <p className={`text-xs text-center py-4 ${tk.textMuted}`}>검색 후 ★ 눌러서 저장하세요</p>
               ) : (
                 favorites.map((f) => (
                   <TrackItem
@@ -259,6 +291,7 @@ export default function EmbedWidget() {
                     isFav={true}
                     onPlay={() => setCurrentTrack(f)}
                     onToggleFav={(e) => toggleFavorite(f, e)}
+                    tk={tk}
                   />
                 ))
               )}
@@ -271,20 +304,19 @@ export default function EmbedWidget() {
 }
 
 function TrackItem({
-  track, isPlaying, isFav, onPlay, onToggleFav,
+  track, isPlaying, isFav, onPlay, onToggleFav, tk,
 }: {
   track: Track;
   isPlaying: boolean;
   isFav: boolean;
   onPlay: () => void;
   onToggleFav: (e: React.MouseEvent) => void;
+  tk: Record<string, string>;
 }) {
   return (
-    <div
-      className={`flex items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-white/[0.07] transition-colors group ${
-        isPlaying ? "bg-white/[0.07]" : ""
-      }`}
-    >
+    <div className={`flex items-center gap-2.5 px-2 py-2 rounded-xl transition-colors group ${
+      isPlaying ? tk.trackPlaying : tk.trackHover
+    }`}>
       <button onClick={onPlay} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
         <div className="relative shrink-0">
           <img src={track.thumbnail} alt="" className="w-9 h-9 rounded-lg object-cover" />
@@ -295,10 +327,7 @@ function TrackItem({
                   <div
                     key={i}
                     className="w-0.5 bg-white rounded-full animate-pulse"
-                    style={{
-                      height: `${[60, 100, 70][i]}%`,
-                      animationDelay: `${i * 0.15}s`,
-                    }}
+                    style={{ height: `${[60, 100, 70][i]}%`, animationDelay: `${i * 0.15}s` }}
                   />
                 ))}
               </div>
@@ -306,17 +335,17 @@ function TrackItem({
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <p className={`text-xs font-medium truncate ${isPlaying ? "text-white" : "text-white/75"}`}>
+          <p className={`text-xs font-medium truncate ${isPlaying ? tk.textPrimary : tk.textSecond}`}>
             {track.title}
           </p>
-          <p className="text-white/30 text-[10px] truncate mt-0.5">{track.channel}</p>
+          <p className={`text-[10px] truncate mt-0.5 ${tk.textMuted}`}>{track.channel}</p>
         </div>
       </button>
       <button
         onClick={onToggleFav}
-        className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all"
+        className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-black/[0.06]"
       >
-        <Star size={12} className={isFav ? "text-yellow-400 fill-yellow-400" : "text-white/40"} />
+        <Star size={12} className={isFav ? "text-yellow-400 fill-yellow-400" : tk.textMuted} />
       </button>
     </div>
   );
