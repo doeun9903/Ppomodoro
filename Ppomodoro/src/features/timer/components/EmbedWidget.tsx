@@ -35,6 +35,7 @@ export default function EmbedWidget() {
   const [isSearching, setIsSearching] = useState(false);
 
   const isFavorite = (id: string) => favorites.some((f) => f.id === id);
+
   const toggleFavorite = (track: Track, e?: React.MouseEvent) => {
     e?.stopPropagation();
     const next = isFavorite(track.id)
@@ -57,73 +58,86 @@ export default function EmbedWidget() {
 
   const accent    = timer.mode === "focus" ? "#ff6b6b" : "#4ecdc4";
   const accentBtn = timer.mode === "focus"
-    ? "bg-[#ff6b6b] hover:bg-[#ff5252] shadow-[0_4px_14px_rgba(255,107,107,0.3)]"
-    : "bg-[#4ecdc4] hover:bg-[#3dbdb5] shadow-[0_4px_14px_rgba(78,205,196,0.3)]";
+    ? "bg-[#ff6b6b] hover:bg-[#ff5252]"
+    : "bg-[#4ecdc4] hover:bg-[#3dbdb5]";
   const modeBadge = timer.mode === "focus"
-    ? "bg-[#ff6b6b]/10 text-[#ff6b6b]"
-    : "bg-[#4ecdc4]/10 text-[#4ecdc4]";
+    ? "bg-[#ff6b6b]/15 text-[#ff6b6b]"
+    : "bg-[#4ecdc4]/15 text-[#4ecdc4]";
 
   return (
-    <div className="h-screen w-full bg-[#0f1117] flex flex-col overflow-hidden select-none">
+    <div className="w-full min-h-screen bg-[#0f1117] overflow-y-auto">
 
-      {/* ── 타이머 ── */}
-      <div className="shrink-0 p-3 pb-2">
-        <div className="bg-white/[0.05] border border-white/[0.07] rounded-2xl p-4">
+      {/* ── 타이머 (항상 상단 고정) ── */}
+      <div className="sticky top-0 z-20 bg-[#0f1117] px-3 pt-3 pb-2">
+        <div className="bg-[#1a1f2e] border border-white/[0.08] rounded-2xl p-4">
+
+          {/* 모드 + 설정 시간 */}
           <div className="flex items-center justify-between mb-3">
-            <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${modeBadge}`}>
+            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full tracking-wide ${modeBadge}`}>
               {timer.mode === "focus" ? "🍅 집중" : "☕ 휴식"}
             </span>
-            <span className="text-white/20 text-xs tabular-nums">
-              {timer.mode === "focus" ? `${timer.focusMins}분` : `${timer.breakMins}분`}
-            </span>
+            <button
+              onClick={timer.switchMode}
+              className="flex items-center gap-1.5 text-white/25 hover:text-white/60 text-[11px] transition-colors"
+            >
+              <span className="tabular-nums">
+                {timer.mode === "focus" ? `${timer.focusMins}분` : `${timer.breakMins}분`}
+              </span>
+              <ArrowLeftRight size={11} />
+            </button>
           </div>
 
+          {/* 시간 */}
           <div
-            className="text-5xl font-bold tabular-nums text-center mb-3 tracking-tight"
+            className="text-6xl font-black tabular-nums text-center tracking-tighter mb-3"
             style={{ color: accent }}
           >
             {formatTime(timer.timeLeft)}
           </div>
 
-          <div className="h-px rounded-full overflow-hidden mb-4 bg-white/8">
+          {/* 진행 바 */}
+          <div className="h-1 rounded-full bg-white/[0.07] overflow-hidden mb-4">
             <div
               className="h-full rounded-full"
-              style={{ width: `${timer.progress}%`, background: accent, transition: "width 1s linear" }}
+              style={{
+                width: `${timer.progress}%`,
+                background: accent,
+                transition: "width 1s linear",
+              }}
             />
           </div>
 
-          <div className="flex items-center justify-center gap-2.5">
+          {/* 컨트롤 */}
+          <div className="flex items-center justify-center gap-3">
             <button
               onClick={timer.reset}
-              className="w-9 h-9 rounded-full bg-white/8 hover:bg-white/15 text-white/35 hover:text-white/75 flex items-center justify-center transition-all active:scale-90"
+              className="w-10 h-10 rounded-full bg-white/[0.07] hover:bg-white/15 text-white/40 hover:text-white/80 flex items-center justify-center transition-all active:scale-90"
             >
-              <RotateCcw size={14} />
+              <RotateCcw size={15} />
             </button>
+
             <button
               onClick={timer.isRunning ? timer.pause : timer.start}
-              className={`flex items-center gap-1.5 px-7 py-2.5 rounded-full text-white text-sm font-semibold transition-all active:scale-95 ${accentBtn}`}
+              className={`flex items-center gap-2 px-8 py-2.5 rounded-full text-white text-sm font-bold transition-all active:scale-95 ${accentBtn}`}
             >
               {timer.isRunning
-                ? <><Pause size={14} fill="currentColor" />일시정지</>
-                : <><Play  size={14} fill="currentColor" className="ml-0.5" />시작</>
+                ? <><Pause size={15} fill="currentColor" />일시정지</>
+                : <><Play  size={15} fill="currentColor" className="ml-0.5" />시작</>
               }
             </button>
-            <button
-              onClick={timer.switchMode}
-              className="w-9 h-9 rounded-full bg-white/8 hover:bg-white/15 text-white/35 hover:text-white/75 flex items-center justify-center transition-all active:scale-90"
-            >
-              <ArrowLeftRight size={14} />
-            </button>
+
+            {/* 리셋 자리 채우기용 더미 (대칭) */}
+            <div className="w-10 h-10" />
           </div>
         </div>
       </div>
 
-      {/* ── 음악 ── */}
-      <div className="flex-1 flex flex-col overflow-hidden px-3 pb-3 gap-2 min-h-0">
+      {/* ── 음악 (스크롤 영역) ── */}
+      <div className="px-3 pb-4 flex flex-col gap-2">
 
-        {/* Now Playing — 호버하면 유튜브 컨트롤 노출 */}
+        {/* Now Playing */}
         {currentTrack ? (
-          <div className="relative shrink-0 rounded-2xl overflow-hidden group">
+          <div className="relative rounded-2xl overflow-hidden group">
             <iframe
               key={currentTrack.id}
               src={`https://www.youtube.com/embed/${currentTrack.id}?autoplay=1&rel=0`}
@@ -132,100 +146,110 @@ export default function EmbedWidget() {
               className="w-full aspect-video block"
               title={currentTrack.title}
             />
-            {/* 블러 오버레이 — 호버 시 사라져서 유튜브 컨트롤 노출 */}
-            <div className="absolute inset-0 backdrop-blur-md bg-black/65 transition-opacity duration-300 group-hover:opacity-0 pointer-events-none" />
-            {/* 트랙 정보 — 호버 시 사라짐 */}
+            {/* 블러 오버레이 — 호버 시 사라짐 */}
+            <div className="absolute inset-0 backdrop-blur-md bg-black/70 transition-opacity duration-300 group-hover:opacity-0 pointer-events-none" />
+            {/* 트랙 정보 */}
             <div className="absolute inset-0 flex items-center gap-3 px-4 transition-opacity duration-300 group-hover:opacity-0 pointer-events-none">
-              <img src={currentTrack.thumbnail} alt="" className="w-10 h-10 rounded-xl object-cover shrink-0" />
+              <img src={currentTrack.thumbnail} alt="" className="w-11 h-11 rounded-xl object-cover shrink-0 shadow-lg" />
               <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-semibold truncate">{currentTrack.title}</p>
-                <p className="text-white/40 text-xs truncate">{currentTrack.channel}</p>
+                <p className="text-white text-sm font-semibold truncate leading-tight">{currentTrack.title}</p>
+                <p className="text-white/40 text-xs truncate mt-0.5">{currentTrack.channel}</p>
               </div>
             </div>
-            {/* 즐겨찾기 + 정지 — 항상 표시 */}
+            {/* 액션 버튼 */}
             <div className="absolute top-2.5 right-2.5 z-10 flex gap-1">
               <button
                 onClick={(e) => toggleFavorite(currentTrack, e)}
-                className="p-1.5 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition-colors"
+                className="w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center hover:bg-black/70 transition-colors"
               >
-                <Star size={12} className={isFavorite(currentTrack.id) ? "text-yellow-400 fill-yellow-400" : "text-white/60"} />
+                <Star size={12} className={isFavorite(currentTrack.id) ? "text-yellow-400 fill-yellow-400" : "text-white/70"} />
               </button>
               <button
                 onClick={() => setCurrentTrack(null)}
-                className="p-1.5 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition-colors"
+                className="w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center hover:bg-black/70 transition-colors"
               >
-                <X size={12} className="text-white/60" />
+                <X size={12} className="text-white/70" />
               </button>
             </div>
+            {/* 호버 힌트 */}
+            <p className="absolute bottom-2 left-0 right-0 text-center text-[10px] text-white/40 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              마우스를 올려 컨트롤
+            </p>
           </div>
         ) : (
-          <div className="shrink-0 flex items-center gap-3 p-3 rounded-2xl border border-dashed border-white/10">
-            <Music size={15} className="text-white/20 shrink-0" />
-            <span className="text-white/25 text-xs">아래에서 노래를 검색하세요</span>
-          </div>
+          <button
+            onClick={() => setActiveTab("search")}
+            className="flex items-center gap-3 p-3.5 rounded-2xl border border-dashed border-white/10 hover:border-white/20 hover:bg-white/[0.03] transition-all text-left"
+          >
+            <div className="w-9 h-9 rounded-xl bg-white/[0.05] flex items-center justify-center shrink-0">
+              <Music size={16} className="text-white/25" />
+            </div>
+            <span className="text-white/30 text-xs">노래를 검색해서 틀어보세요</span>
+          </button>
         )}
 
         {/* 탭 */}
-        <div className="shrink-0 flex gap-1 bg-white/5 p-1 rounded-xl">
+        <div className="flex gap-1 bg-white/[0.04] border border-white/[0.07] p-1 rounded-xl">
           {(["search", "favorites"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${
-                activeTab === tab ? "bg-white/12 text-white" : "text-white/35 hover:text-white/60"
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                activeTab === tab
+                  ? "bg-white/10 text-white shadow-sm"
+                  : "text-white/30 hover:text-white/60"
               }`}
             >
-              {tab === "favorites" && <Star size={10} />}
-              {tab === "search" ? "검색" : `즐겨찾기${favorites.length > 0 ? ` (${favorites.length})` : ""}`}
+              {tab === "favorites" && <Star size={11} />}
+              {tab === "search" ? "검색" : `즐겨찾기${favorites.length > 0 ? ` · ${favorites.length}` : ""}`}
             </button>
           ))}
         </div>
 
-        {/* 검색 입력 */}
+        {/* 검색 */}
         {activeTab === "search" && (
-          <div className="shrink-0 flex gap-1.5">
+          <div className="flex gap-2">
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && search()}
-              placeholder="노래 검색..."
-              className="flex-1 bg-white/8 text-white text-xs px-3 py-2 rounded-xl outline-none placeholder-white/20 border border-white/8 focus:border-white/25 transition-colors"
+              placeholder="노래 제목, 아티스트 검색..."
+              className="flex-1 bg-white/[0.07] text-white text-xs px-3.5 py-2.5 rounded-xl outline-none placeholder-white/20 border border-white/[0.07] focus:border-white/25 focus:bg-white/10 transition-all"
             />
             <button
               onClick={search}
-              className="px-3 bg-white/8 rounded-xl text-white/50 hover:text-white hover:bg-white/15 transition-colors"
+              className="w-10 bg-white/[0.07] rounded-xl text-white/50 hover:text-white hover:bg-white/15 flex items-center justify-center transition-all active:scale-95"
             >
-              <Search size={13} />
+              <Search size={14} />
             </button>
           </div>
         )}
 
-        {/* 결과 목록 */}
-        <div className="flex-1 overflow-y-auto min-h-0">
+        {/* 결과 */}
+        <div className="flex flex-col gap-0.5">
           {activeTab === "search" && (
             <>
               {isSearching && (
-                <p className="text-white/25 text-[11px] text-center pt-4">검색 중...</p>
+                <p className="text-white/25 text-xs text-center py-4">검색 중...</p>
               )}
-              <div className="flex flex-col gap-0.5">
-                {results.map((r) => (
-                  <TrackItem
-                    key={r.id}
-                    track={r}
-                    isPlaying={currentTrack?.id === r.id}
-                    isFav={isFavorite(r.id)}
-                    onPlay={() => setCurrentTrack(r)}
-                    onToggleFav={(e) => toggleFavorite(r, e)}
-                  />
-                ))}
-              </div>
+              {results.map((r) => (
+                <TrackItem
+                  key={r.id}
+                  track={r}
+                  isPlaying={currentTrack?.id === r.id}
+                  isFav={isFavorite(r.id)}
+                  onPlay={() => setCurrentTrack(r)}
+                  onToggleFav={(e) => toggleFavorite(r, e)}
+                />
+              ))}
             </>
           )}
+
           {activeTab === "favorites" && (
-            <div className="flex flex-col gap-0.5">
+            <>
               {favorites.length === 0 ? (
-                <p className="text-white/20 text-[11px] text-center pt-5">검색 후 ★ 눌러서 저장하세요</p>
+                <p className="text-white/20 text-xs text-center py-4">검색 후 ★ 눌러서 저장하세요</p>
               ) : (
                 favorites.map((f) => (
                   <TrackItem
@@ -238,7 +262,7 @@ export default function EmbedWidget() {
                   />
                 ))
               )}
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -256,16 +280,43 @@ function TrackItem({
   onToggleFav: (e: React.MouseEvent) => void;
 }) {
   return (
-    <div className={`flex items-center gap-2 p-1.5 rounded-xl hover:bg-white/8 transition-colors group ${isPlaying ? "bg-white/8" : ""}`}>
-      <button onClick={onPlay} className="flex items-center gap-2 flex-1 min-w-0 text-left">
-        <img src={track.thumbnail} alt="" className="w-8 h-8 rounded-lg object-cover shrink-0" />
+    <div
+      className={`flex items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-white/[0.07] transition-colors group ${
+        isPlaying ? "bg-white/[0.07]" : ""
+      }`}
+    >
+      <button onClick={onPlay} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
+        <div className="relative shrink-0">
+          <img src={track.thumbnail} alt="" className="w-9 h-9 rounded-lg object-cover" />
+          {isPlaying && (
+            <div className="absolute inset-0 rounded-lg bg-black/30 flex items-center justify-center">
+              <div className="flex gap-0.5 items-end h-3">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="w-0.5 bg-white rounded-full animate-pulse"
+                    style={{
+                      height: `${[60, 100, 70][i]}%`,
+                      animationDelay: `${i * 0.15}s`,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
         <div className="flex-1 min-w-0">
-          <p className={`text-[11px] font-medium truncate ${isPlaying ? "text-white" : "text-white/70"}`}>{track.title}</p>
-          <p className="text-white/30 text-[10px] truncate">{track.channel}</p>
+          <p className={`text-xs font-medium truncate ${isPlaying ? "text-white" : "text-white/75"}`}>
+            {track.title}
+          </p>
+          <p className="text-white/30 text-[10px] truncate mt-0.5">{track.channel}</p>
         </div>
       </button>
-      <button onClick={onToggleFav} className="shrink-0 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Star size={12} className={isFav ? "text-yellow-400 fill-yellow-400" : "text-white/35 hover:text-white/60"} />
+      <button
+        onClick={onToggleFav}
+        className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all"
+      >
+        <Star size={12} className={isFav ? "text-yellow-400 fill-yellow-400" : "text-white/40"} />
       </button>
     </div>
   );
