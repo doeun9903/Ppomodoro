@@ -152,8 +152,9 @@ export default function EmbedWidget() {
               <>
                 <iframe
                   key={currentTrack.id}
-                  src={`https://www.youtube.com/embed/${currentTrack.id}?autoplay=1&controls=0&rel=0&modestbranding=1`}
-                  allow="autoplay; encrypted-media"
+                  src={`https://www.youtube.com/embed/${currentTrack.id}?autoplay=1&controls=1&rel=0`}
+                  allow="autoplay; encrypted-media; picture-in-picture"
+                  allowFullScreen
                   className="absolute w-[300%] h-[300%] pointer-events-none"
                   style={{ top: "-100%", left: "-100%" }}
                   onLoad={() => setVideoLoaded(true)}
