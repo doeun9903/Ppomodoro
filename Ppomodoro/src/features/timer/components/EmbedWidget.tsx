@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { Play, Pause, RotateCcw, Search, Star, Music, ArrowLeftRight, X } from "lucide-react";
+import {
+  Play, Pause, RotateCcw, Search, Star, Music,
+  ArrowLeftRight, X,
+} from "lucide-react";
 import { useTimer } from "../hooks/useTimer";
 
 interface Track {
@@ -21,9 +24,7 @@ const formatTime = (s: number) => {
 export default function EmbedWidget() {
   const timer = useTimer();
 
-  const [activated, setActivated] = useState(false);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
-  const [videoLoaded, setVideoLoaded] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Track[]>([]);
   const [favorites, setFavorites] = useState<Track[]>(() => {
@@ -32,9 +33,6 @@ export default function EmbedWidget() {
   });
   const [activeTab, setActiveTab] = useState<"search" | "favorites">("search");
   const [isSearching, setIsSearching] = useState(false);
-
-  // 트랙 바뀔 때마다 로딩 초기화
-  useEffect(() => { setVideoLoaded(false); }, [currentTrack?.id]);
 
   const isFavorite = (id: string) => favorites.some((f) => f.id === id);
   const toggleFavorite = (track: Track, e?: React.MouseEvent) => {
@@ -66,31 +64,11 @@ export default function EmbedWidget() {
     : "bg-[#4ecdc4]/10 text-[#4ecdc4]";
 
   return (
-    <div className="relative h-screen w-full bg-[#0f1117] flex flex-col overflow-hidden select-none">
-
-      {/* ── 활성화 오버레이 (첫 클릭 → 브라우저 오디오 권한 확보) ── */}
-      {!activated && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-[#0f1117]">
-          <div className="flex flex-col items-center gap-2 text-center px-6">
-            <span className="text-4xl mb-1">🍅</span>
-            <p className="text-white font-semibold text-base">뽀모도로 위젯</p>
-            <p className="text-white/30 text-xs leading-relaxed">
-              타이머와 BGM을 함께 사용하세요
-            </p>
-          </div>
-          <button
-            onClick={() => setActivated(true)}
-            className={`px-7 py-2.5 rounded-full text-white text-sm font-semibold transition-all active:scale-95 ${accentBtn}`}
-          >
-            시작하기 →
-          </button>
-        </div>
-      )}
+    <div className="h-screen w-full bg-[#0f1117] flex flex-col overflow-hidden select-none">
 
       {/* ── 타이머 ── */}
       <div className="shrink-0 p-3 pb-2">
         <div className="bg-white/[0.05] border border-white/[0.07] rounded-2xl p-4">
-
           <div className="flex items-center justify-between mb-3">
             <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${modeBadge}`}>
               {timer.mode === "focus" ? "🍅 집중" : "☕ 휴식"}
@@ -143,66 +121,49 @@ export default function EmbedWidget() {
       {/* ── 음악 ── */}
       <div className="flex-1 flex flex-col overflow-hidden px-3 pb-3 gap-2 min-h-0">
 
-        {/* Now Playing — 원형 비주얼라이저 */}
-        <div className="shrink-0 flex items-center gap-3 px-3 py-2.5 bg-white/[0.04] border border-white/[0.07] rounded-2xl">
-
-          {/* 원형 영상 — controls=0, 중앙 크롭 */}
-          <div className="relative w-11 h-11 rounded-full overflow-hidden shrink-0 ring-1 ring-white/10">
-            {currentTrack && activated ? (
-              <>
-                <iframe
-                  key={currentTrack.id}
-                  src={`https://www.youtube.com/embed/${currentTrack.id}?autoplay=1&controls=1&rel=0`}
-                  allow="autoplay; encrypted-media; picture-in-picture"
-                  allowFullScreen
-                  className="absolute w-[300%] h-[300%] pointer-events-none"
-                  style={{ top: "-100%", left: "-100%" }}
-                  onLoad={() => setVideoLoaded(true)}
-                  title={currentTrack.title}
-                />
-                {!videoLoaded && (
-                  <div className="absolute inset-0 bg-black flex items-center justify-center">
-                    <div className="w-3.5 h-3.5 rounded-full border-2 border-white/20 border-t-white/60 animate-spin" />
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="absolute inset-0 bg-white/5 flex items-center justify-center">
-                <Music size={14} className="text-white/20" />
+        {/* Now Playing — 호버하면 유튜브 컨트롤 노출 */}
+        {currentTrack ? (
+          <div className="relative shrink-0 rounded-2xl overflow-hidden group">
+            <iframe
+              key={currentTrack.id}
+              src={`https://www.youtube.com/embed/${currentTrack.id}?autoplay=1&rel=0`}
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+              className="w-full aspect-video block"
+              title={currentTrack.title}
+            />
+            {/* 블러 오버레이 — 호버 시 사라져서 유튜브 컨트롤 노출 */}
+            <div className="absolute inset-0 backdrop-blur-md bg-black/65 transition-opacity duration-300 group-hover:opacity-0 pointer-events-none" />
+            {/* 트랙 정보 — 호버 시 사라짐 */}
+            <div className="absolute inset-0 flex items-center gap-3 px-4 transition-opacity duration-300 group-hover:opacity-0 pointer-events-none">
+              <img src={currentTrack.thumbnail} alt="" className="w-10 h-10 rounded-xl object-cover shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-semibold truncate">{currentTrack.title}</p>
+                <p className="text-white/40 text-xs truncate">{currentTrack.channel}</p>
               </div>
-            )}
-          </div>
-
-          {/* 트랙 정보 */}
-          <div className="flex-1 min-w-0">
-            {currentTrack ? (
-              <>
-                <p className="text-white text-xs font-medium truncate leading-snug">{currentTrack.title}</p>
-                <p className="text-white/35 text-[10px] truncate">{currentTrack.channel}</p>
-              </>
-            ) : (
-              <p className="text-white/25 text-[11px]">노래를 검색해서 선택하세요</p>
-            )}
-          </div>
-
-          {/* 즐겨찾기 + 정지 */}
-          {currentTrack && (
-            <div className="flex items-center gap-0.5 shrink-0">
+            </div>
+            {/* 즐겨찾기 + 정지 — 항상 표시 */}
+            <div className="absolute top-2.5 right-2.5 z-10 flex gap-1">
               <button
                 onClick={(e) => toggleFavorite(currentTrack, e)}
-                className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
+                className="p-1.5 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition-colors"
               >
-                <Star size={13} className={isFavorite(currentTrack.id) ? "text-yellow-400 fill-yellow-400" : "text-white/30 hover:text-white/60"} />
+                <Star size={12} className={isFavorite(currentTrack.id) ? "text-yellow-400 fill-yellow-400" : "text-white/60"} />
               </button>
               <button
                 onClick={() => setCurrentTrack(null)}
-                className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
+                className="p-1.5 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition-colors"
               >
-                <X size={13} className="text-white/25 hover:text-white/60" />
+                <X size={12} className="text-white/60" />
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="shrink-0 flex items-center gap-3 p-3 rounded-2xl border border-dashed border-white/10">
+            <Music size={15} className="text-white/20 shrink-0" />
+            <span className="text-white/25 text-xs">아래에서 노래를 검색하세요</span>
+          </div>
+        )}
 
         {/* 탭 */}
         <div className="shrink-0 flex gap-1 bg-white/5 p-1 rounded-xl">
@@ -261,13 +222,10 @@ export default function EmbedWidget() {
               </div>
             </>
           )}
-
           {activeTab === "favorites" && (
             <div className="flex flex-col gap-0.5">
               {favorites.length === 0 ? (
-                <p className="text-white/20 text-[11px] text-center pt-5">
-                  검색 후 ★ 눌러서 저장하세요
-                </p>
+                <p className="text-white/20 text-[11px] text-center pt-5">검색 후 ★ 눌러서 저장하세요</p>
               ) : (
                 favorites.map((f) => (
                   <TrackItem
@@ -302,16 +260,11 @@ function TrackItem({
       <button onClick={onPlay} className="flex items-center gap-2 flex-1 min-w-0 text-left">
         <img src={track.thumbnail} alt="" className="w-8 h-8 rounded-lg object-cover shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className={`text-[11px] font-medium truncate ${isPlaying ? "text-white" : "text-white/70"}`}>
-            {track.title}
-          </p>
+          <p className={`text-[11px] font-medium truncate ${isPlaying ? "text-white" : "text-white/70"}`}>{track.title}</p>
           <p className="text-white/30 text-[10px] truncate">{track.channel}</p>
         </div>
       </button>
-      <button
-        onClick={onToggleFav}
-        className="shrink-0 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-      >
+      <button onClick={onToggleFav} className="shrink-0 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <Star size={12} className={isFav ? "text-yellow-400 fill-yellow-400" : "text-white/35 hover:text-white/60"} />
       </button>
     </div>
