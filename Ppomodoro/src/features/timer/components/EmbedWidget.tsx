@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Play, Pause, RotateCcw, Search, Star, Music,
   ArrowLeftRight, X,
