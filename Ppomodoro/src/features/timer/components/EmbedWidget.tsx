@@ -29,6 +29,7 @@ export default function EmbedWidget() {
     (localStorage.getItem(THEME_KEY) as "dark" | "light") ?? "dark"
   );
   const [currentTrack, setCurrentTrack]   = useState<Track | null>(null);
+  const [playlistSrc, setPlaylistSrc]     = useState<string | null>(null); // 즐겨찾기 연속재생 src
   const [query, setQuery]                 = useState("");
   const [results, setResults]             = useState<Track[]>([]);
   const [favorites, setFavorites]         = useState<Track[]>(() => {
@@ -52,6 +53,24 @@ export default function EmbedWidget() {
       : [...favorites, track];
     setFavorites(next);
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
+  };
+
+  // 검색 결과에서 단일 재생
+  const playSingle = (track: Track) => {
+    setCurrentTrack(track);
+    setPlaylistSrc(`https://www.youtube.com/embed/${track.id}?autoplay=1&rel=0`);
+  };
+
+  // 즐겨찾기에서 선택 → 이후 목록 순서대로 연속 재생
+  const playFromFavorites = (track: Track) => {
+    const idx = favorites.findIndex((f) => f.id === track.id);
+    const rest = [
+      ...favorites.slice(idx + 1),
+      ...favorites.slice(0, idx),
+    ].map((f) => f.id).join(",");
+    setCurrentTrack(track);
+    const src = `https://www.youtube.com/embed/${track.id}?autoplay=1&rel=0${rest ? `&playlist=${rest}` : ""}`;
+    setPlaylistSrc(src);
   };
 
   const search = async () => {
@@ -172,8 +191,8 @@ export default function EmbedWidget() {
         {currentTrack ? (
           <div className="relative rounded-2xl overflow-hidden group">
             <iframe
-              key={currentTrack.id}
-              src={`https://www.youtube.com/embed/${currentTrack.id}?autoplay=1&rel=0`}
+              key={playlistSrc}
+              src={playlistSrc ?? `https://www.youtube.com/embed/${currentTrack.id}?autoplay=1&rel=0`}
               allow="autoplay; encrypted-media; picture-in-picture"
               allowFullScreen
               className="w-full aspect-video block"
@@ -184,7 +203,14 @@ export default function EmbedWidget() {
               <img src={currentTrack.thumbnail} alt="" className="w-11 h-11 rounded-xl object-cover shrink-0 shadow-lg" />
               <div className="flex-1 min-w-0">
                 <p className="text-white text-sm font-semibold truncate leading-tight">{currentTrack.title}</p>
-                <p className="text-white/40 text-xs truncate mt-0.5">{currentTrack.channel}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <p className="text-white/40 text-xs truncate">{currentTrack.channel}</p>
+                  {playlistSrc?.includes("playlist=") && (
+                    <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-white/15 text-white/60">
+                      즐겨찾기 연속재생
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="absolute top-2.5 right-2.5 z-10 flex gap-1">
@@ -271,7 +297,7 @@ export default function EmbedWidget() {
                   track={r}
                   isPlaying={currentTrack?.id === r.id}
                   isFav={isFavorite(r.id)}
-                  onPlay={() => setCurrentTrack(r)}
+                  onPlay={() => playSingle(r)}
                   onToggleFav={(e) => toggleFavorite(r, e)}
                   tk={tk}
                 />
@@ -289,7 +315,7 @@ export default function EmbedWidget() {
                     track={f}
                     isPlaying={currentTrack?.id === f.id}
                     isFav={true}
-                    onPlay={() => setCurrentTrack(f)}
+                    onPlay={() => playFromFavorites(f)}
                     onToggleFav={(e) => toggleFavorite(f, e)}
                     tk={tk}
                   />
