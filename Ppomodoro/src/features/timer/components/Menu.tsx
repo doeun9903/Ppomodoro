@@ -89,8 +89,8 @@ export default function Menu({
     setLoadingHistory(true);
     const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
     fetch(`${API_BASE}/api/todos/history`)
-      .then((r) => r.json())
-      .then(setTodoHistory)
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then((data) => { if (data && typeof data === "object" && !Array.isArray(data)) setTodoHistory(data); })
       .catch(console.error)
       .finally(() => setLoadingHistory(false));
   }, [isOpen, activeTab]);

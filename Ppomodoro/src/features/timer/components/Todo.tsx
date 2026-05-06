@@ -62,8 +62,9 @@ export default function TodoPanel({ selectedTodoId, onSelect, sessionSeconds, sy
     setIsLoading(true);
     try {
       const res = await fetch(API);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setTodos(data);
+      if (Array.isArray(data)) setTodos(data);
     } catch {
       console.error("투두 불러오기 실패");
     } finally {
@@ -82,6 +83,7 @@ export default function TodoPanel({ selectedTodoId, onSelect, sessionSeconds, sy
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const newTodo = await res.json();
       setTodos((prev) => [...prev, newTodo]);
     } catch {
