@@ -54,8 +54,8 @@ const BgmPlayer = forwardRef<BgmPlayerHandle>(function BgmPlayer(_, ref) {
     const createPlayer = () => {
       if (!containerRef.current) return;
       playerRef.current = new window.YT.Player(containerRef.current, {
-        height: "0",
-        width: "0",
+        height: "1",
+        width: "1",
         playerVars: { autoplay: 0 },
         events: {
           onReady: (e: any) => {
@@ -224,7 +224,7 @@ const BgmPlayer = forwardRef<BgmPlayerHandle>(function BgmPlayer(_, ref) {
 
       {/* 플레이어 바 (임베드/일반 동일한 UI) */}
       <div className="flex items-center gap-3 px-5 py-3 rounded-full bg-black/60 backdrop-blur-md border border-white/10 shadow-lg">
-        <div ref={containerRef} className="hidden" />
+        <div ref={containerRef} className="absolute w-px h-px opacity-0 pointer-events-none overflow-hidden" />
 
         <button
           onClick={() => (showPanel ? closePanel() : setShowPanel(true))}
